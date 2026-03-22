@@ -1,0 +1,229 @@
+{
+  "target": {
+    "name": "large_move",
+    "definition": "abs(next_day_return) >= train_quantile_threshold",
+    "train_quantile": 0.8,
+    "threshold": 0.024280314044780482
+  },
+  "split_label_counts": {
+    "train": {
+      "normal_move": 24027,
+      "large_move": 6022
+    },
+    "validation": {
+      "normal_move": 5574,
+      "large_move": 917
+    },
+    "test": {
+      "normal_move": 5662,
+      "large_move": 694
+    }
+  },
+  "models": {
+    "market_only_amp": {
+      "model": "market_only_amp",
+      "feature_columns": [
+        "same_day_return",
+        "abs_same_day_return"
+      ],
+      "best_c": 0.1,
+      "validation": {
+        "accuracy": 0.8601140040055462,
+        "macro_f1": 0.48735306417684976,
+        "class_counts": {
+          "normal_move": 5574,
+          "large_move": 917
+        },
+        "prediction_counts": {
+          "normal_move": 6452,
+          "large_move": 39
+        },
+        "confusion_matrix": [
+          [
+            5559,
+            15
+          ],
+          [
+            893,
+            24
+          ]
+        ]
+      },
+      "test": {
+        "accuracy": 0.8859345500314664,
+        "macro_f1": 0.4778697138713342,
+        "class_counts": {
+          "normal_move": 5662,
+          "large_move": 694
+        },
+        "prediction_counts": {
+          "normal_move": 6313,
+          "large_move": 43
+        },
+        "confusion_matrix": [
+          [
+            5625,
+            37
+          ],
+          [
+            688,
+            6
+          ]
+        ]
+      }
+    },
+    "structured_logreg": {
+      "model": "structured_logreg",
+      "feature_columns": [
+        "same_day_return",
+        "abs_same_day_return",
+        "claim_prob",
+        "finbert_positive_prob",
+        "finbert_negative_prob",
+        "finbert_neutral_prob",
+        "finbert_sentiment_score",
+        "material_sentiment_score"
+      ],
+      "best_c": 0.1,
+      "validation": {
+        "accuracy": 0.8601140040055462,
+        "macro_f1": 0.4883382157049853,
+        "class_counts": {
+          "normal_move": 5574,
+          "large_move": 917
+        },
+        "prediction_counts": {
+          "normal_move": 6450,
+          "large_move": 41
+        },
+        "confusion_matrix": [
+          [
+            5558,
+            16
+          ],
+          [
+            892,
+            25
+          ]
+        ]
+      },
+      "test": {
+        "accuracy": 0.8876651982378855,
+        "macro_f1": 0.4864455643053173,
+        "class_counts": {
+          "normal_move": 5662,
+          "large_move": 694
+        },
+        "prediction_counts": {
+          "normal_move": 6312,
+          "large_move": 44
+        },
+        "confusion_matrix": [
+          [
+            5630,
+            32
+          ],
+          [
+            682,
+            12
+          ]
+        ]
+      }
+    },
+    "structured_mlp": {
+      "model": "structured_mlp",
+      "feature_columns": [
+        "same_day_return",
+        "abs_same_day_return",
+        "claim_prob",
+        "finbert_positive_prob",
+        "finbert_negative_prob",
+        "finbert_neutral_prob",
+        "finbert_sentiment_score",
+        "material_sentiment_score"
+      ],
+      "validation": {
+        "accuracy": 0.8573409336003698,
+        "macro_f1": 0.46899804584662896,
+        "class_counts": {
+          "normal_move": 5574,
+          "large_move": 917
+        },
+        "prediction_counts": {
+          "normal_move": 6468,
+          "large_move": 23
+        },
+        "confusion_matrix": [
+          [
+            5558,
+            16
+          ],
+          [
+            910,
+            7
+          ]
+        ]
+      },
+      "test": {
+        "accuracy": 0.8895531780994336,
+        "macro_f1": 0.4859140908864666,
+        "class_counts": {
+          "normal_move": 5662,
+          "large_move": 694
+        },
+        "prediction_counts": {
+          "normal_move": 6326,
+          "large_move": 30
+        },
+        "confusion_matrix": [
+          [
+            5643,
+            19
+          ],
+          [
+            683,
+            11
+          ]
+        ]
+      }
+    }
+  },
+  "rows": [
+    {
+      "model": "market_only_amp",
+      "split": "validation",
+      "accuracy": 0.8601140040055462,
+      "macro_f1": 0.48735306417684976
+    },
+    {
+      "model": "market_only_amp",
+      "split": "test",
+      "accuracy": 0.8859345500314664,
+      "macro_f1": 0.4778697138713342
+    },
+    {
+      "model": "structured_logreg",
+      "split": "validation",
+      "accuracy": 0.8601140040055462,
+      "macro_f1": 0.4883382157049853
+    },
+    {
+      "model": "structured_logreg",
+      "split": "test",
+      "accuracy": 0.8876651982378855,
+      "macro_f1": 0.4864455643053173
+    },
+    {
+      "model": "structured_mlp",
+      "split": "validation",
+      "accuracy": 0.8573409336003698,
+      "macro_f1": 0.46899804584662896
+    },
+    {
+      "model": "structured_mlp",
+      "split": "test",
+      "accuracy": 0.8895531780994336,
+      "macro_f1": 0.4859140908864666
+    }
+  ]
+}

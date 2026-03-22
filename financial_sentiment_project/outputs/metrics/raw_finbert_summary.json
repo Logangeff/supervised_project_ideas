@@ -1,0 +1,89 @@
+{
+  "model_id": "ProsusAI/finbert",
+  "device": "cuda",
+  "checkpoint_id2label": {
+    "0": "positive",
+    "1": "negative",
+    "2": "neutral"
+  },
+  "evaluation": {
+    "phrasebank_validation": {
+      "accuracy": 0.8804123711340206,
+      "macro_f1": 0.8687302871222707,
+      "confusion_matrix": [
+        [
+          58,
+          2,
+          0
+        ],
+        [
+          15,
+          244,
+          29
+        ],
+        [
+          4,
+          8,
+          125
+        ]
+      ],
+      "labels": [
+        "negative",
+        "neutral",
+        "positive"
+      ]
+    },
+    "phrasebank_test": {
+      "accuracy": 0.8639175257731959,
+      "macro_f1": 0.8578766584216501,
+      "confusion_matrix": [
+        [
+          59,
+          1,
+          1
+        ],
+        [
+          15,
+          239,
+          34
+        ],
+        [
+          2,
+          13,
+          121
+        ]
+      ],
+      "labels": [
+        "negative",
+        "neutral",
+        "positive"
+      ]
+    },
+    "fiqa_test": {
+      "accuracy": 0.5085470085470085,
+      "macro_f1": 0.48051450465243567,
+      "confusion_matrix": [
+        [
+          51,
+          26,
+          7
+        ],
+        [
+          2,
+          10,
+          0
+        ],
+        [
+          8,
+          72,
+          58
+        ]
+      ],
+      "labels": [
+        "negative",
+        "neutral",
+        "positive"
+      ]
+    }
+  }
+}

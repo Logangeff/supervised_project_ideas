@@ -1,0 +1,193 @@
+{
+  "split_sizes": {
+    "train": 350,
+    "validation": 75,
+    "test": 75
+  },
+  "models": {
+    "market_only": {
+      "model": "market_only",
+      "best_c": 1.0,
+      "validation": {
+        "accuracy": 0.5466666666666666,
+        "macro_f1": 0.5446428571428571,
+        "class_counts": {
+          "down": 33,
+          "up": 42
+        },
+        "prediction_counts": {
+          "down": 37,
+          "up": 38
+        },
+        "confusion_matrix": [
+          [
+            18,
+            15
+          ],
+          [
+            19,
+            23
+          ]
+        ]
+      },
+      "test": {
+        "accuracy": 0.5333333333333333,
+        "macro_f1": 0.5320021394187913,
+        "class_counts": {
+          "down": 39,
+          "up": 36
+        },
+        "prediction_counts": {
+          "down": 40,
+          "up": 35
+        },
+        "confusion_matrix": [
+          [
+            22,
+            17
+          ],
+          [
+            18,
+            18
+          ]
+        ]
+      }
+    },
+    "full_text": {
+      "model": "full_text",
+      "best_c": 10.0,
+      "feature_count": 1851,
+      "validation": {
+        "accuracy": 0.5066666666666667,
+        "macro_f1": 0.5009890307498651,
+        "class_counts": {
+          "down": 33,
+          "up": 42
+        },
+        "prediction_counts": {
+          "down": 34,
+          "up": 41
+        },
+        "confusion_matrix": [
+          [
+            15,
+            18
+          ],
+          [
+            19,
+            23
+          ]
+        ]
+      },
+      "test": {
+        "accuracy": 0.52,
+        "macro_f1": 0.512987012987013,
+        "class_counts": {
+          "down": 39,
+          "up": 36
+        },
+        "prediction_counts": {
+          "down": 45,
+          "up": 30
+        },
+        "confusion_matrix": [
+          [
+            24,
+            15
+          ],
+          [
+            21,
+            15
+          ]
+        ]
+      }
+    },
+    "claim_aware": {
+      "model": "claim_aware",
+      "best_c": 10.0,
+      "feature_count": 1854,
+      "validation": {
+        "accuracy": 0.5333333333333333,
+        "macro_f1": 0.5320021394187913,
+        "class_counts": {
+          "down": 33,
+          "up": 42
+        },
+        "prediction_counts": {
+          "down": 38,
+          "up": 37
+        },
+        "confusion_matrix": [
+          [
+            18,
+            15
+          ],
+          [
+            20,
+            22
+          ]
+        ]
+      },
+      "test": {
+        "accuracy": 0.5066666666666667,
+        "macro_f1": 0.5034889962426194,
+        "class_counts": {
+          "down": 39,
+          "up": 36
+        },
+        "prediction_counts": {
+          "down": 42,
+          "up": 33
+        },
+        "confusion_matrix": [
+          [
+            22,
+            17
+          ],
+          [
+            20,
+            16
+          ]
+        ]
+      }
+    }
+  },
+  "rows": [
+    {
+      "model": "market_only",
+      "split": "validation",
+      "accuracy": 0.5466666666666666,
+      "macro_f1": 0.5446428571428571
+    },
+    {
+      "model": "market_only",
+      "split": "test",
+      "accuracy": 0.5333333333333333,
+      "macro_f1": 0.5320021394187913
+    },
+    {
+      "model": "full_text",
+      "split": "validation",
+      "accuracy": 0.5066666666666667,
+      "macro_f1": 0.5009890307498651
+    },
+    {
+      "model": "full_text",
+      "split": "test",
+      "accuracy": 0.52,
+      "macro_f1": 0.512987012987013
+    },
+    {
+      "model": "claim_aware",
+      "split": "validation",
+      "accuracy": 0.5333333333333333,
+      "macro_f1": 0.5320021394187913
+    },
+    {
+      "model": "claim_aware",
+      "split": "test",
+      "accuracy": 0.5066666666666667,
+      "macro_f1": 0.5034889962426194
+    }
+  ]
+}

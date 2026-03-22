@@ -1,0 +1,3 @@
+https://huggingface.co/datasets/NOSIBLE/financial-sentiment/viewer/default/train?row=4
+https://huggingface.co/datasets/TheFinAI/fiqa-sentiment-classification/viewer/default/train
+https://huggingface.co/datasets/lmassaron/FinancialPhraseBank?utm_source=chatgpt.com

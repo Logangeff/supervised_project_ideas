@@ -1,0 +1,13 @@
+{
+  "row_count": 500,
+  "trade_date_range": {
+    "min_date": "2024-03-21",
+    "max_date": "2026-03-19"
+  },
+  "headline_days": 472,
+  "empty_headline_days": 28,
+  "direction_label_counts": {
+    "down": 246,
+    "up": 254
+  }
+}

@@ -1,0 +1,8 @@
+config/fred_api_key.json
+.venv/
+__pycache__/
+*.pyc
+outputs/
+data/raw/
+data/processed/
+!data/catalog/

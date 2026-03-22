@@ -1,0 +1,62 @@
+{
+  "dataset_id": "gtfintechlab/Numclaim",
+  "official_splits": {
+    "train": 2144,
+    "test": 537
+  },
+  "label_mapping": {
+    "OUTOFCLAIM": 0,
+    "INCLAIM": 1
+  },
+  "validation_rule": {
+    "source": "official_train_only",
+    "type": "stratified",
+    "train_fraction": 0.85,
+    "validation_fraction": 0.15,
+    "seed": 42
+  },
+  "splits": {
+    "train": {
+      "size": 1822,
+      "label_counts": {
+        "OUTOFCLAIM": 1478,
+        "INCLAIM": 344
+      },
+      "artifact": {
+        "path": "outputs\\splits\\stage1_train_indices.csv",
+        "size": 1822,
+        "sha256": "18295f4b4a887f256b395904998ed7470831e7fc6bf5c4c5dd1f04076cd6d750"
+      }
+    },
+    "validation": {
+      "size": 322,
+      "label_counts": {
+        "OUTOFCLAIM": 261,
+        "INCLAIM": 61
+      },
+      "artifact": {
+        "path": "outputs\\splits\\stage1_validation_indices.csv",
+        "size": 322,
+        "sha256": "695c2d73e820d0c739bb04d72823daa1d18033086682544380621e99f6df88d4"
+      }
+    },
+    "test": {
+      "size": 537,
+      "label_counts": {
+        "OUTOFCLAIM": 439,
+        "INCLAIM": 98
+      },
+      "artifact": {
+        "path": "outputs\\splits\\stage1_test_indices.csv",
+        "size": 537,
+        "sha256": "57718df03fa55b4ad82466eb9380205b1f2820d0d54ee58e01cd4856da135095"
+      }
+    }
+  },
+  "smoke_checks": {
+    "official_split_sizes_match": true,
+    "derived_train_validation_sum_matches": true,
+    "labels_are_binary": true,
+    "split_hashes_stable": true
+  }
+}

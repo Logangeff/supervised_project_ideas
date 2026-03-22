@@ -1,0 +1,105 @@
+\documentclass[10pt]{article}
+\usepackage[letterpaper,margin=0.62in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+\setlist[itemize]{leftmargin=1.1em,itemsep=1pt,topsep=1pt}
+\titleformat{\section}{\large\bfseries}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{}{0em}{}
+\titlespacing*{\section}{0pt}{0.45em}{0.25em}
+
+\begin{document}
+\begin{center}
+    {\Large \textbf{WRDS + OptionMetrics Project Brief}}\\[4pt]
+    {\large \textbf{Predicting High Realized-Volatility Regimes}}\\[10pt]
+    Prepared by Logan Geffroy\\
+    Presented to Professor Pascal Fran\c{c}ois\\
+    March 21, 2026
+\end{center}
+
+\small
+\vspace{0.25em}
+
+\section*{Project Objective}
+This project studies whether option-implied information helps predict future volatility regimes better than standard stock-side signals alone. The target equals one when a stock's \textbf{forward 20-trading-day realized volatility} is above the \textbf{training-set 80th percentile}, and zero otherwise. The main question is whether \textbf{OptionMetrics features add predictive value beyond CRSP-based stock features} in a clean out-of-time setting.
+
+\section*{Data and Sample Construction}
+The implementation uses a static large-cap U.S. equity universe, with daily data from \textbf{CRSP} and \textbf{OptionMetrics}, over \textbf{2016-01-01 to 2024-12-31}. The stock-side extraction resolved \textbf{101 PERMNOs}, and the usable stock panel contains \textbf{213,786} stock-day rows across \textbf{97} PERMNOs. The raw options pull produced \textbf{262,252,896} contract-level rows linked through \texttt{SECID}--\texttt{PERMNO} matching. After filtering and aggregation, the option feature panel contains \textbf{224,212} stock-day rows, and the \textbf{complete-case comparison panel} used for Part~2 contains \textbf{178,217} rows.
+
+Standard data-quality filters were applied before any option features were constructed:
+\begin{itemize}
+    \item positive implied volatility,
+    \item positive open interest,
+    \item positive bid and ask,
+    \item bid not above offer,
+    \item non-missing delta.
+\end{itemize}
+\section*{Model Design}
+The project was intentionally implemented in two parts.
+
+\textbf{Part 1: Stock-only core.} Each stock-day row uses only lagged stock information available at time $t$:
+\[
+\texttt{ret\_1d, ret\_5d, ret\_20d, rv\_5d, rv\_20d, turnover\_20d.}
+\]
+Two baselines were estimated:
+\begin{itemize}
+    \item a persistence-style baseline based on the current 20-day realized volatility level,
+    \item a standardized Logistic Regression using the stock features above.
+\end{itemize}
+
+\textbf{Part 2: OptionMetrics increment.} The main incremental-information test is performed on the common complete-case panel using:
+\begin{itemize}
+    \item \textbf{stock-only} features,
+    \item \textbf{option-only} features,
+    \item \textbf{combined} stock + option features.
+\end{itemize}
+The option feature set is deliberately small and interpretable: short-term and longer-term ATM implied volatility, the implied-volatility term slope, short-dated put skew, put/call open-interest ratio, put/call volume ratio, and log total short-dated open interest.
+
+\section*{Evaluation Logic}
+Chronological splits were fixed in advance:
+\begin{itemize}
+    \item train: 2016-01-01 to 2021-12-31,
+    \item validation: 2022-01-01 to 2022-12-31,
+    \item test: 2023-01-01 to 2024-12-31.
+\end{itemize}
+The main reported metrics are \textbf{Macro-F1} and \textbf{PR-AUC}. The principal comparison is the Part~2 test-set result, because all three models are evaluated on the same option-covered stock-day subset.
+
+\newpage
+
+\section*{Results Recap}
+\begin{table}[h]
+\centering
+\footnotesize
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{5.1cm} >{\centering\arraybackslash}p{2cm} >{\centering\arraybackslash}p{2cm} >{\centering\arraybackslash}X}
+\toprule
+\textbf{Model} & \textbf{Accuracy} & \textbf{Macro-F1} & \textbf{PR-AUC} \\
+\midrule
+Part 1: Persistence baseline & 0.7774 & 0.6385 & 0.4310 \\
+Part 1: Stock-only Logistic Regression & 0.8301 & 0.6265 & 0.4875 \\
+\midrule
+Part 2: Stock-only (complete-case panel) & 0.8198 & 0.6274 & 0.5024 \\
+Part 2: Option-only Logistic Regression & \textbf{0.8625} & \textbf{0.7539} & 0.7092 \\
+Part 2: Combined stock + option Logistic Regression & 0.8625 & 0.7531 & \textbf{0.7096} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section*{Interpretation}
+The project produced a clear result. The stock-only models are useful but limited: on the test set they remain around \textbf{Macro-F1 $\approx$ 0.63}. Once option-implied information is introduced, performance increases sharply. The \textbf{option-only} model reaches \textbf{Macro-F1 = 0.7539} and \textbf{PR-AUC = 0.7092}, materially outperforming the stock-only baseline on the same complete-case sample.
+
+The most important empirical point is that the \textbf{combined} model is essentially tied with the option-only model. This suggests that, for this target and sample, the OptionMetrics variables already encode most of the predictive information needed to classify future high-volatility regimes. In other words, the option market appears to aggregate the relevant forward-looking volatility signal more effectively than the simple stock-side predictors used here.
+
+\section*{Conclusion}
+This project is successful as a supervised finance application. Its contribution is a clean \textbf{incremental-information test} showing that \textbf{option-implied variables substantially outperform stock-only features} for predicting future high realized-volatility regimes.
+
+\end{document}

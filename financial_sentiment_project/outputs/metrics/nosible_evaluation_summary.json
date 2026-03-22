@@ -1,0 +1,320 @@
+{
+  "standard_bow": {
+    "nosible_validation": {
+      "accuracy": 0.7595,
+      "macro_f1": 0.7599962626970292,
+      "confusion_matrix": [
+        [
+          1806,
+          429,
+          208
+        ],
+        [
+          314,
+          3005,
+          612
+        ],
+        [
+          186,
+          656,
+          2784
+        ]
+      ],
+      "labels": [
+        "negative",
+        "neutral",
+        "positive"
+      ]
+    },
+    "nosible_test": {
+      "accuracy": 0.7548,
+      "macro_f1": 0.7555917084344653,
+      "confusion_matrix": [
+        [
+          1783,
+          483,
+          178
+        ],
+        [
+          323,
+          2987,
+          621
+        ],
+        [
+          166,
+          681,
+          2778
+        ]
+      ],
+      "labels": [
+        "negative",
+        "neutral",
+        "positive"
+      ]
+    },
+    "phrasebank_test": {
+      "accuracy": 0.6989690721649484,
+      "macro_f1": 0.662014673418079,
+      "confusion_matrix": [
+        [
+          39,
+          12,
+          10
+        ],
+        [
+          15,
+          213,
+          60
+        ],
+        [
+          11,
+          38,
+          87
+        ]
+      ],
+      "labels": [
+        "negative",
+        "neutral",
+        "positive"
+      ]
+    },
+    "fiqa_test": {
+      "accuracy": 0.36752136752136755,
+      "macro_f1": 0.36409342291695235,
+      "confusion_matrix": [
+        [
+          29,
+          48,
+          7
+        ],
+        [
+          2,
+          7,
+          3
+        ],
+        [
+          2,
+          86,
+          50
+        ]
+      ],
+      "labels": [
+        "negative",
+        "neutral",
+        "positive"
+      ]
+    }
+  },
+  "lm_restricted_bow": {
+    "nosible_validation": {
+      "accuracy": 0.6499,
+      "macro_f1": 0.6566288985099074,
+      "confusion_matrix": [
+        [
+          1722,
+          534,
+          187
+        ],
+        [
+          447,
+          2646,
+          838
+        ],
+        [
+          253,
+          1242,
+          2131
+        ]
+      ],
+      "labels": [
+        "negative",
+        "neutral",
+        "positive"
+      ]
+    },
+    "nosible_test": {
+      "accuracy": 0.6472,
+      "macro_f1": 0.6546094758812221,
+      "confusion_matrix": [
+        [
+          1716,
+          538,
+          190
+        ],
+        [
+          421,
+          2671,
+          839
+        ],
+        [
+          237,
+          1303,
+          2085
+        ]
+      ],
+      "labels": [
+        "negative",
+        "neutral",
+        "positive"
+      ]
+    },
+    "phrasebank_test": {
+      "accuracy": 0.6350515463917525,
+      "macro_f1": 0.49034770742288264,
+      "confusion_matrix": [
+        [
+          18,
+          41,
+          2
+        ],
+        [
+          7,
+          256,
+          25
+        ],
+        [
+          12,
+          90,
+          34
+        ]
+      ],
+      "labels": [
+        "negative",
+        "neutral",
+        "positive"
+      ]
+    },
+    "fiqa_test": {
+      "accuracy": 0.24786324786324787,
+      "macro_f1": 0.2771276595744681,
+      "confusion_matrix": [
+        [
+          30,
+          51,
+          3
+        ],
+        [
+          1,
+          10,
+          1
+        ],
+        [
+          5,
+          115,
+          18
+        ]
+      ],
+      "labels": [
+        "negative",
+        "neutral",
+        "positive"
+      ]
+    }
+  },
+  "gru": {
+    "nosible_validation": {
+      "accuracy": 0.7013,
+      "macro_f1": 0.7028528245530131,
+      "confusion_matrix": [
+        [
+          1701,
+          542,
+          200
+        ],
+        [
+          418,
+          2845,
+          668
+        ],
+        [
+          232,
+          927,
+          2467
+        ]
+      ],
+      "labels": [
+        "negative",
+        "neutral",
+        "positive"
+      ]
+    },
+    "nosible_test": {
+      "accuracy": 0.7027,
+      "macro_f1": 0.7041916741555138,
+      "confusion_matrix": [
+        [
+          1701,
+          559,
+          184
+        ],
+        [
+          418,
+          2861,
+          652
+        ],
+        [
+          230,
+          930,
+          2465
+        ]
+      ],
+      "labels": [
+        "negative",
+        "neutral",
+        "positive"
+      ]
+    },
+    "phrasebank_test": {
+      "accuracy": 0.6701030927835051,
+      "macro_f1": 0.6176088200527879,
+      "confusion_matrix": [
+        [
+          36,
+          18,
+          7
+        ],
+        [
+          23,
+          215,
+          50
+        ],
+        [
+          12,
+          50,
+          74
+        ]
+      ],
+      "labels": [
+        "negative",
+        "neutral",
+        "positive"
+      ]
+    },
+    "fiqa_test": {
+      "accuracy": 0.3888888888888889,
+      "macro_f1": 0.3779331779331779,
+      "confusion_matrix": [
+        [
+          34,
+          45,
+          5
+        ],
+        [
+          3,
+          7,
+          2
+        ],
+        [
+          9,
+          79,
+          50
+        ]
+      ],
+      "labels": [
+        "negative",
+        "neutral",
+        "positive"
+      ]
+    }
+  }
+}

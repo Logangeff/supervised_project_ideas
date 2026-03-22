@@ -1,0 +1,34 @@
+Machine_Learning_A2025-main/
+tp2 - genevieve/
+
+# Local environments and caches
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/.cache/
+**/.pytest_cache/
+**/.ipynb_checkpoints/
+
+# Local secrets
+**/config/wrds_credentials.json
+**/config/fred_api_key.json
+**/*.env
+**/*.pem
+**/*.key
+**/*.p12
+
+# Heavy local datasets / artifacts
+**/data/raw/
+**/data/processed/
+**/outputs/models/
+**/*.parquet
+**/*.pkl
+**/*.joblib
+**/*.pt
+**/*.bin
+**/*.safetensors
+**/*.ckpt
+
+# OS/editor noise
+Thumbs.db
+.DS_Store

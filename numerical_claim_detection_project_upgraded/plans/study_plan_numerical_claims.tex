@@ -1,0 +1,59 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+
+\begin{document}
+
+\begin{center}
+{\Large MATH60629A: Machine Learning I -- Project Study Plan} \\
+\vspace{0.5em}
+{\large Project Title: Numerical Claim Detection in Financial Text, with a Restricted Downstream Prediction Extension} \\
+\vspace{0.5em}
+Date: March 20, 2026 \\
+Team members: Logan Geffroy and Youssef Taoussi
+\end{center}
+
+\section*{1. Problem statement and research question}
+Financial text often conveys its most decision-relevant information through numbers. Earnings reports, analyst commentary, and financial news regularly refer to revenue growth, margin changes, debt levels, valuation multiples, or forward guidance. However, not every sentence containing a number makes a substantive quantitative claim. This project therefore begins from a focused supervised NLP problem: given a sentence from financial text, can a model determine whether it contains a genuine numerical claim rather than a merely descriptive mention of a number?
+
+The core research question for the course project is whether modest machine learning models can reliably distinguish claim-bearing financial statements from non-claim numerical mentions. The main comparison will be between a standard sparse text baseline and a small neural sequence model, with an optional finance-domain transformer if time permits. The task is attractive because it is more specific and more finance-relevant than generic sentiment analysis, while still being cleanly supervised and feasible to execute within the course timeline.
+
+The project also leaves room for one restricted extension. If the core claim-detection pipeline is stable, we will test whether automatically detected numerical-claim information improves a simple downstream event-level prediction task on financial news headlines. This second stage is deliberately narrow and will be treated as supplementary rather than as a separate full project.
+
+\section*{2. Datasets}
+The core dataset will be the public resource introduced in recent work on numerical claim detection in finance. It contains financial text annotated for whether a sentence containing a numeral expresses a numerical claim. We will use this dataset for the main supervised classification task. If the resource provides an official split, we will preserve it; otherwise, we will create a reproducible train/validation/test split with fixed random seeds.
+
+If the optional downstream extension is reached, we will use a separate public financial-news dataset that already provides article titles, publication dates, company linkage, and adjacent stock-price fields. The current preferred candidate is the Yahoo-Finance-based financial-news dataset released on Hugging Face and originally published through the Felix Drinkall financial-news-dataset repository. This dataset is attractive because it already includes most of the fields needed for a small predictive experiment and therefore reduces the risk that the extension turns into a data-engineering project.
+
+\section*{3. Proposed methodology}
+We model the core task as supervised classification from a sentence $x$ to a binary label $y \in \{0,1\}$ indicating whether the sentence contains a numerical claim.
+
+The first baseline will use TF--IDF bag-of-words features with Logistic Regression. This provides an interpretable reference point and will test whether lexical cues such as forecast verbs, comparison phrases, and percentage expressions are already sufficient for useful performance.
+
+The second model will be a small recurrent neural network, such as a GRU, trained directly on the labeled sentences. This introduces learned representations while remaining close to the methods covered in the course. If time allows, a finance-domain transformer such as FinBERT may be included as an extension, but the main project will not depend on it.
+
+The downstream extension, if implemented, will remain tightly restricted. Its purpose will not be to build a general stock-prediction system, but to test one concrete ablation question: does numerical-claim information help relative to using all available text? The comparison will therefore remain small and controlled, using a market-only baseline, an all-text baseline, and a claim-aware text variant defined from the Stage~1 detector.
+
+\section*{4. Design and execution of experiments}
+All experiments will use fixed random seeds and a single preprocessing pipeline so that the comparisons remain clean. For the core claim-detection task, hyperparameters will be selected only on the validation split. Final reporting will use Accuracy and macro-F1, and confusion matrices will be included for the main models. We will also perform a brief qualitative error analysis, especially for difficult cases involving forecasts, ratios, ranges, comparisons, and sentences in which a number appears without expressing a claim.
+
+If the downstream extension is reached, it will be implemented in the most conservative form possible. The unit of analysis will be one article title, one clearly mapped company ticker, and one publication date. We will keep only rows with a non-missing title, a single clearly mapped ticker, and valid previous-day, current-day, and next-day price fields. The target will be a binary next-day direction label defined from the sign of the move between current-day and next-day prices; rows with exactly zero change will be dropped. To avoid temporal leakage, the downstream split will be chronological, for example the earliest 70\% of eligible rows for training, the next 15\% for validation, and the final 15\% for testing.
+
+The downstream model comparison will also remain deliberately modest. The market-only baseline will use only minimal price-derived information available around the event, such as the same-day return implied by previous-day and current-day prices. This baseline is intentionally simple; its role is only to test whether text adds signal beyond immediately available market information. The all-text baseline will use the full headline text, while the claim-aware variant will remain on the same event universe and append a Stage~1-derived claim flag or claim probability to the text representation. This keeps the downstream extension interpretable and prevents it from becoming a second sprawling project.
+
+\section*{5. Questions for discussion}
+\begin{enumerate}[leftmargin=1.5em]
+\item Does the proposed structure seem appropriate for the course, with numerical claim detection as the core project and the downstream financial prediction component treated as a tightly restricted extension rather than as part of the minimum deliverable?
+\item For the core task, would you recommend limiting the main comparison to TF--IDF plus Logistic Regression and a small GRU, with any finance-domain transformer kept explicitly optional?
+\item For the optional downstream extension, is the proposed minimal protocol sufficiently well scoped, or would you recommend stopping at Stage~1 for the course submission and treating Stage~2 only as a future supervised-project direction?
+\end{enumerate}
+
+\end{document}

@@ -1,0 +1,15 @@
+{
+  "standard_bow": {
+    "selected_c": 10.0,
+    "validation_accuracy": 0.756701030927835,
+    "validation_macro_f1": 0.7072279986002585,
+    "feature_count": 3949
+  },
+  "lm_restricted_bow": {
+    "selected_c": 10.0,
+    "validation_accuracy": 0.6515463917525773,
+    "validation_macro_f1": 0.4732680190817197,
+    "feature_count": 195,
+    "restricted_vocabulary_size": 195
+  }
+}

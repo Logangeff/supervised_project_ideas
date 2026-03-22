@@ -1,0 +1,55 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+
+\begin{document}
+
+\begin{center}
+{\Large MATH60629A: Machine Learning I -- Project Study Plan} \\
+\vspace{0.5em}
+{\large Project Title: Numerical Claim Detection in Financial Text} \\
+\vspace{0.5em}
+Date: March 20, 2026 \\
+Team members: Logan Geffroy and Youssef Taoussi
+\end{center}
+
+\section*{1. Problem statement and research question}
+Financial language is unusual in that numerical statements often carry most of the decision-relevant content. Investors, analysts, and journalists frequently discuss revenue changes, guidance revisions, margins, leverage, or valuation levels through short claims that combine text with numbers. This project studies a supervised NLP problem that is more specific than generic sentiment analysis: given a sentence from financial text, can a model predict whether it contains a genuine numerical claim rather than a merely descriptive mention of a number?
+
+The research question is whether modest machine learning models can reliably separate claim-bearing numerical statements from non-claim numerical mentions, and how much is gained from using finance-aware language models rather than standard sparse text features. The novelty is appropriate for the course because the task is focused, clearly supervised, and grounded in a recent finance-domain dataset, while still leaving room for later extensions into market analysis or information extraction.
+
+\section*{2. Datasets}
+We will use the public dataset introduced in recent work on numerical claim detection in finance. The dataset contains financial text annotated for whether a sentence containing a numeral expresses a numerical claim. This is attractive for a course project because the task is already well-defined, the labels are supervised, and the data are directly tied to a realistic finance-domain problem.
+
+The unit of analysis will be one sentence. We will use the claim label supplied by the dataset and keep the first version of the project as a binary classification problem. If the resource provides an official split, we will preserve it; otherwise, we will create a reproducible stratified train/validation/test split with fixed random seeds. Since the focus is claim detection rather than market prediction, the data pipeline is comparatively light, which makes the project safer to execute within the course timeline.
+
+\section*{3. Proposed methodology}
+We model the problem as supervised classification from a sentence $x$ to a binary label $y \in \{0,1\}$ indicating whether the sentence contains a numerical claim.
+
+The first baseline will use TF--IDF bag-of-words features with Logistic Regression. This gives an interpretable reference point and will test whether lexical cues such as forecast verbs, comparison words, and percentage expressions are already sufficient for useful performance.
+
+The second model will be a small neural sequence model, such as a GRU, trained directly on the labeled sentences. This introduces a learned representation while remaining close to the methods covered in a standard machine learning course. Since the task is sentence-level and the text lengths are moderate, the architecture can remain deliberately simple.
+
+If time permits, a finance-domain transformer such as FinBERT can be included as an extension rather than as part of the minimal core design. This would make it possible to test whether domain-specific pretraining captures the interaction between textual cues and numerical expressions better than models trained from scratch on the dataset alone.
+
+\section*{4. Design and execution of experiments}
+All experiments will use fixed random seeds and a single preprocessing pipeline so that the comparison remains clean. Hyperparameters will be selected only on the validation split. The main evaluation metrics will be Accuracy and macro-F1, and confusion matrices will be included to show the main error patterns. We will also perform a brief qualitative inspection of mistakes, especially in cases involving comparative statements, forecasts, ratios, ranges, and sentences where a number is present but not used as part of a claim.
+
+The main purpose of the experiment is to determine how difficult the task is for simple models and whether learned representations offer a meaningful gain. Because the task is narrower than sentiment analysis and more closely tied to how finance text conveys information, it also offers a clear path for extension. A later supervised project could, for example, connect detected numerical claims to market reactions, earnings surprises, or downstream information extraction tasks.
+
+\section*{5. Questions for discussion}
+\begin{enumerate}[leftmargin=1.5em]
+\item Does this task seem sufficiently substantial for the course if the core comparison is kept modest and the emphasis is placed on careful experimental design and error analysis?
+\item Would you recommend including the transformer only as an optional extension, so that the main project remains centered on interpretable baselines and a small neural model?
+\item If the dataset provides an official split, is it preferable to preserve it exactly, even if a custom stratified split would make the validation protocol look closer to our previous project plan?
+\end{enumerate}
+
+\end{document}

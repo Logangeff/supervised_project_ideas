@@ -1,0 +1,211 @@
+{
+  "material_tone_only": {
+    "model": "material_tone_only",
+    "feature_column": "material_sentiment_score",
+    "best_c": 0.1,
+    "validation": {
+      "accuracy": 0.5172626387176326,
+      "macro_f1": 0.34120507982732146,
+      "class_counts": {
+        "down": 3133,
+        "up": 3355
+      },
+      "prediction_counts": {
+        "down": 1,
+        "up": 6487
+      },
+      "confusion_matrix": [
+        [
+          1,
+          3132
+        ],
+        [
+          0,
+          3355
+        ]
+      ]
+    },
+    "test": {
+      "accuracy": 0.49698655540101994,
+      "macro_f1": 0.33199132858470115,
+      "class_counts": {
+        "down": 3255,
+        "up": 3216
+      },
+      "prediction_counts": {
+        "down": 0,
+        "up": 6471
+      },
+      "confusion_matrix": [
+        [
+          0,
+          3255
+        ],
+        [
+          0,
+          3216
+        ]
+      ]
+    }
+  },
+  "all_text": {
+    "model": "all_text",
+    "best_c": 10.0,
+    "feature_count": 16252,
+    "extra_feature_columns": [],
+    "validation": {
+      "accuracy": 0.5097102342786684,
+      "macro_f1": 0.5096447085724256,
+      "class_counts": {
+        "down": 3133,
+        "up": 3355
+      },
+      "prediction_counts": {
+        "down": 3280,
+        "up": 3208
+      },
+      "confusion_matrix": [
+        [
+          1616,
+          1517
+        ],
+        [
+          1664,
+          1691
+        ]
+      ]
+    },
+    "test": {
+      "accuracy": 0.5013135527739144,
+      "macro_f1": 0.5006605955151817,
+      "class_counts": {
+        "down": 3255,
+        "up": 3216
+      },
+      "prediction_counts": {
+        "down": 3450,
+        "up": 3021
+      },
+      "confusion_matrix": [
+        [
+          1739,
+          1516
+        ],
+        [
+          1711,
+          1505
+        ]
+      ]
+    }
+  },
+  "claim_aware": {
+    "model": "claim_aware",
+    "best_c": 10.0,
+    "feature_count": 16253,
+    "extra_feature_columns": [
+      "claim_prob"
+    ],
+    "validation": {
+      "accuracy": 0.5101726263871763,
+      "macro_f1": 0.5101122954808102,
+      "class_counts": {
+        "down": 3133,
+        "up": 3355
+      },
+      "prediction_counts": {
+        "down": 3283,
+        "up": 3205
+      },
+      "confusion_matrix": [
+        [
+          1619,
+          1514
+        ],
+        [
+          1664,
+          1691
+        ]
+      ]
+    },
+    "test": {
+      "accuracy": 0.5006954102920723,
+      "macro_f1": 0.5000963927958011,
+      "class_counts": {
+        "down": 3255,
+        "up": 3216
+      },
+      "prediction_counts": {
+        "down": 3440,
+        "up": 3031
+      },
+      "confusion_matrix": [
+        [
+          1732,
+          1523
+        ],
+        [
+          1708,
+          1508
+        ]
+      ]
+    }
+  },
+  "claim_finbert_aware": {
+    "model": "claim_finbert_aware",
+    "best_c": 1.0,
+    "feature_count": 16258,
+    "extra_feature_columns": [
+      "claim_prob",
+      "finbert_positive_prob",
+      "finbert_negative_prob",
+      "finbert_neutral_prob",
+      "finbert_sentiment_score",
+      "material_sentiment_score"
+    ],
+    "validation": {
+      "accuracy": 0.5095561035758323,
+      "macro_f1": 0.5092501408437312,
+      "class_counts": {
+        "down": 3133,
+        "up": 3355
+      },
+      "prediction_counts": {
+        "down": 3193,
+        "up": 3295
+      },
+      "confusion_matrix": [
+        [
+          1572,
+          1561
+        ],
+        [
+          1621,
+          1734
+        ]
+      ]
+    },
+    "test": {
+      "accuracy": 0.5037861227012826,
+      "macro_f1": 0.5032223133583575,
+      "class_counts": {
+        "down": 3255,
+        "up": 3216
+      },
+      "prediction_counts": {
+        "down": 3434,
+        "up": 3037
+      },
+      "confusion_matrix": [
+        [
+          1739,
+          1516
+        ],
+        [
+          1695,
+          1521
+        ]
+      ]
+    }
+  },
+  "sentiment_model_id": "ProsusAI/finbert"
+}

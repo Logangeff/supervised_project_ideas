@@ -1,0 +1,48 @@
+{
+  "model": "market_only",
+  "best_c": 0.1,
+  "validation": {
+    "accuracy": 0.5278976572133169,
+    "macro_f1": 0.3651472567143019,
+    "class_counts": {
+      "down": 3133,
+      "up": 3355
+    },
+    "prediction_counts": {
+      "down": 70,
+      "up": 6418
+    },
+    "confusion_matrix": [
+      [
+        70,
+        3063
+      ],
+      [
+        0,
+        3355
+      ]
+    ]
+  },
+  "test": {
+    "accuracy": 0.5147581517539793,
+    "macro_f1": 0.3701045705761488,
+    "class_counts": {
+      "down": 3255,
+      "up": 3216
+    },
+    "prediction_counts": {
+      "down": 115,
+      "up": 6356
+    },
+    "confusion_matrix": [
+      [
+        115,
+        3140
+      ],
+      [
+        0,
+        3216
+      ]
+    ]
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "rows": [
+    {
+      "model": "tfidf_logreg",
+      "split": "train",
+      "accuracy": 0.995609220636663,
+      "macro_f1": 0.9927844584680637
+    },
+    {
+      "model": "tfidf_logreg",
+      "split": "validation",
+      "accuracy": 0.9627329192546584,
+      "macro_f1": 0.9393254192575844
+    },
+    {
+      "model": "tfidf_logreg",
+      "split": "test",
+      "accuracy": 0.9329608938547486,
+      "macro_f1": 0.8798657718120806
+    },
+    {
+      "model": "gru",
+      "split": "train",
+      "accuracy": 0.8111964873765093,
+      "macro_f1": 0.4478787878787879
+    },
+    {
+      "model": "gru",
+      "split": "validation",
+      "accuracy": 0.8105590062111802,
+      "macro_f1": 0.44768439108061747
+    },
+    {
+      "model": "gru",
+      "split": "test",
+      "accuracy": 0.8175046554934823,
+      "macro_f1": 0.44979508196721313
+    }
+  ]
+}

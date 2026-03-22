@@ -1,0 +1,67 @@
+{
+  "headline_rows": 2390,
+  "daily_rows_with_sentiment_signal": 472,
+  "model": {
+    "model": "claim_sentiment_aware",
+    "best_c": 0.1,
+    "feature_count": 1858,
+    "validation": {
+      "accuracy": 0.49333333333333335,
+      "macro_f1": 0.4925213675213675,
+      "class_counts": {
+        "down": 33,
+        "up": 42
+      },
+      "prediction_counts": {
+        "down": 39,
+        "up": 36
+      },
+      "confusion_matrix": [
+        [
+          17,
+          16
+        ],
+        [
+          22,
+          20
+        ]
+      ]
+    },
+    "test": {
+      "accuracy": 0.48,
+      "macro_f1": 0.47665056360708535,
+      "class_counts": {
+        "down": 39,
+        "up": 36
+      },
+      "prediction_counts": {
+        "down": 42,
+        "up": 33
+      },
+      "confusion_matrix": [
+        [
+          21,
+          18
+        ],
+        [
+          21,
+          15
+        ]
+      ]
+    }
+  },
+  "rows": [
+    {
+      "model": "claim_sentiment_aware",
+      "split": "validation",
+      "accuracy": 0.49333333333333335,
+      "macro_f1": 0.4925213675213675
+    },
+    {
+      "model": "claim_sentiment_aware",
+      "split": "test",
+      "accuracy": 0.48,
+      "macro_f1": 0.47665056360708535
+    }
+  ]
+}

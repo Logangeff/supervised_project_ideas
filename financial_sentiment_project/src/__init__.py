@@ -1,0 +1,1 @@
+"""Financial sentiment project package."""

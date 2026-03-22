@@ -1,0 +1,51 @@
+{
+  "model_id": "ProsusAI/finbert",
+  "output_dir": "C:\\Users\\xxtri\\Desktop\\Machine Learning\\PROJECT\\outputs\\models\\finbert_finetuned",
+  "device": "cuda",
+  "checkpoint_label2id": {
+    "positive": 0,
+    "negative": 1,
+    "neutral": 2
+  },
+  "checkpoint_id2label": {
+    "0": "positive",
+    "1": "negative",
+    "2": "neutral"
+  },
+  "epochs_run": 4,
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.3149302011593379,
+      "validation_loss": 0.288514188490808,
+      "validation_accuracy": 0.8680412371134021,
+      "validation_macro_f1": 0.8523698562482872
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.15062716067097928,
+      "validation_loss": 0.33146172016859055,
+      "validation_accuracy": 0.8907216494845361,
+      "validation_macro_f1": 0.883134025315781
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.07974867913067157,
+      "validation_loss": 0.4325638087466359,
+      "validation_accuracy": 0.8680412371134021,
+      "validation_macro_f1": 0.8547707937600649
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.05547452192282143,
+      "validation_loss": 0.43730206694453955,
+      "validation_accuracy": 0.8845360824742268,
+      "validation_macro_f1": 0.8759979783177472
+    }
+  ],
+  "best_validation": {
+    "loss": 0.33146172016859055,
+    "accuracy": 0.8907216494845361,
+    "macro_f1": 0.883134025315781
+  }
+}

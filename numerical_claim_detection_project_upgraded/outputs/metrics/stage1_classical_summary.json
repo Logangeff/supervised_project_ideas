@@ -1,0 +1,49 @@
+{
+  "model": "tfidf_logreg",
+  "best_c": 10.0,
+  "feature_count": 2285,
+  "validation": {
+    "accuracy": 0.9627329192546584,
+    "macro_f1": 0.9393254192575844,
+    "class_counts": {
+      "OUTOFCLAIM": 261,
+      "INCLAIM": 61
+    },
+    "prediction_counts": {
+      "OUTOFCLAIM": 261,
+      "INCLAIM": 61
+    },
+    "confusion_matrix": [
+      [
+        255,
+        6
+      ],
+      [
+        6,
+        55
+      ]
+    ]
+  },
+  "test": {
+    "accuracy": 0.9329608938547486,
+    "macro_f1": 0.8798657718120806,
+    "class_counts": {
+      "OUTOFCLAIM": 439,
+      "INCLAIM": 98
+    },
+    "prediction_counts": {
+      "OUTOFCLAIM": 455,
+      "INCLAIM": 82
+    },
+    "confusion_matrix": [
+      [
+        429,
+        10
+      ],
+      [
+        26,
+        72
+      ]
+    ]
+  }
+}

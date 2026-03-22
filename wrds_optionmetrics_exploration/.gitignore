@@ -1,0 +1,8 @@
+config/wrds_credentials.json
+data/raw/**/*.parquet
+data/raw/**/*.csv
+outputs/**
+!outputs/.gitkeep
+src/__pycache__/
+src/*.pyc
+.venv/

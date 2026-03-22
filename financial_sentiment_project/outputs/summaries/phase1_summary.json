@@ -1,0 +1,116 @@
+{
+  "seed": 42,
+  "phrasebank": {
+    "source": {
+      "repo_id": "takala/financial_phrasebank",
+      "zip_member": "FinancialPhraseBank-v1.0/Sentences_50Agree.txt"
+    },
+    "row_count": 4846,
+    "label_counts": {
+      "negative": 604,
+      "neutral": 2879,
+      "positive": 1363
+    },
+    "splits": {
+      "train": {
+        "size": 3876,
+        "label_counts": {
+          "negative": 483,
+          "neutral": 2303,
+          "positive": 1090
+        },
+        "artifact": {
+          "path": "C:\\Users\\xxtri\\Desktop\\Machine Learning\\PROJECT\\outputs\\splits\\phrasebank_train_indices.csv",
+          "size": 3876,
+          "sha256": "9f5801098130fba63bec1fd6ed8ee4be02f5ebdb1c0bdb1fed9a0cea6e7dac40"
+        }
+      },
+      "validation": {
+        "size": 485,
+        "label_counts": {
+          "negative": 60,
+          "neutral": 288,
+          "positive": 137
+        },
+        "artifact": {
+          "path": "C:\\Users\\xxtri\\Desktop\\Machine Learning\\PROJECT\\outputs\\splits\\phrasebank_validation_indices.csv",
+          "size": 485,
+          "sha256": "e9b7597601d12927da035e69543f3330c494d5086b4b4a56084118943941fcdc"
+        }
+      },
+      "test": {
+        "size": 485,
+        "label_counts": {
+          "negative": 61,
+          "neutral": 288,
+          "positive": 136
+        },
+        "artifact": {
+          "path": "C:\\Users\\xxtri\\Desktop\\Machine Learning\\PROJECT\\outputs\\splits\\phrasebank_test_indices.csv",
+          "size": 485,
+          "sha256": "92902c8835a8d2c77856683955e1298c52c016db7eabfb313a09c46d379c0a5d"
+        }
+      }
+    }
+  },
+  "fiqa": {
+    "source_dir": "C:\\Users\\xxtri\\Desktop\\Machine Learning\\PROJECT\\data\\fiqa-sentiment-classification\\data",
+    "thresholds": {
+      "negative_lte": -0.1,
+      "positive_gte": 0.1
+    },
+    "splits": {
+      "train": {
+        "size": 822,
+        "mapped_label_counts": {
+          "negative": 237,
+          "neutral": 70,
+          "positive": 515
+        }
+      },
+      "valid": {
+        "size": 117,
+        "mapped_label_counts": {
+          "negative": 43,
+          "neutral": 8,
+          "positive": 66
+        }
+      },
+      "test": {
+        "size": 234,
+        "mapped_label_counts": {
+          "negative": 84,
+          "neutral": 12,
+          "positive": 138
+        }
+      }
+    },
+    "official_test_size": 234,
+    "official_test_mapped_label_counts": {
+      "negative": 84,
+      "neutral": 12,
+      "positive": 138
+    }
+  },
+  "loughran_mcdonald": {
+    "csv_path": "C:\\Users\\xxtri\\Desktop\\Machine Learning\\PROJECT\\data\\loughran_mcdonald\\Loughran-McDonald_MasterDictionary_1993-2024.csv",
+    "category_columns": [
+      "Negative",
+      "Positive",
+      "Uncertainty",
+      "Litigious",
+      "Strong_Modal",
+      "Weak_Modal",
+      "Constraining"
+    ],
+    "restricted_vocabulary_size": 3859
+  },
+  "smoke_checks": {
+    "phrasebank_row_count_is_4846": true,
+    "phrasebank_split_total_matches": true,
+    "fiqa_labels_are_valid": true,
+    "lm_vocabulary_non_empty": true,
+    "lm_vocabulary_is_lowercase": true,
+    "repeated_split_hashes_match": true
+  }
+}

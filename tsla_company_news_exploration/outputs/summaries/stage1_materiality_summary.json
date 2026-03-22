@@ -1,0 +1,7 @@
+{
+  "headline_rows": 2390,
+  "headline_claim_prob_mean": 0.14587870240211487,
+  "headline_claim_prob_max": 0.996229350566864,
+  "daily_rows": 500,
+  "daily_rows_with_claim_signal": 140
+}

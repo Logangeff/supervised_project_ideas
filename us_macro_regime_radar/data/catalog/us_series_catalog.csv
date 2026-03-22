@@ -1,0 +1,26 @@
+series_id,display_name,source_owner,native_frequency,monthly_aggregation,publication_lag_months,transform_family,role,enabled
+USRECDM,NBER based recession indicators for the United States,St. Louis Fed,Monthly,last,0,level,label,1
+PAYEMS,All employees total nonfarm,St. Louis Fed,Monthly,last,1,log_diff_12m,feature,1
+UNRATE,Unemployment rate,St. Louis Fed,Monthly,last,1,level,feature,1
+ICSA,Initial claims,St. Louis Fed,Weekly,mean,0,log_level,feature,1
+INDPRO,Industrial production index,St. Louis Fed,Monthly,last,1,log_diff_12m,feature,1
+CUMFNS,Capacity utilization total industry,St. Louis Fed,Monthly,last,1,level,feature,1
+W875RX1,Real personal income less transfer receipts,St. Louis Fed,Monthly,last,2,log_diff_12m,feature,1
+CMRMTSPL,Real manufacturing and trade industries sales,St. Louis Fed,Monthly,last,2,log_diff_12m,feature,1
+RSAFS,Advance retail sales,St. Louis Fed,Monthly,last,1,log_diff_12m,feature,1
+HOUST,Housing starts total new privately owned,St. Louis Fed,Monthly,last,1,log_diff_12m,feature,1
+PERMIT,Building permits new privately owned housing units,St. Louis Fed,Monthly,last,1,log_diff_12m,feature,1
+CPIAUCSL,Consumer price index all urban consumers,St. Louis Fed,Monthly,last,1,log_diff_12m,feature,1
+PCEPILFE,Core PCE price index,St. Louis Fed,Monthly,last,2,log_diff_12m,feature,1
+FEDFUNDS,Effective federal funds rate,St. Louis Fed,Monthly,last,0,level,feature,1
+GS10,10 year treasury constant maturity rate,St. Louis Fed,Monthly,last,0,level,feature,1
+TB3MS,3 month treasury bill secondary market rate,St. Louis Fed,Monthly,last,0,level,feature,1
+BAA,Moodys seasoned BAA corporate bond yield,St. Louis Fed,Monthly,last,0,level,feature,1
+AAA,Moodys seasoned AAA corporate bond yield,St. Louis Fed,Monthly,last,0,level,feature,1
+SP500,S and P 500,St. Louis Fed,Daily,last,0,log_level,feature,1
+VIXCLS,CBOE volatility index VIX,St. Louis Fed,Daily,last,0,level,feature,1
+NFCI,Chicago Fed national financial conditions index,Chicago Fed,Weekly,mean,0,level,feature,1
+ANFCI,Chicago Fed adjusted national financial conditions index,Chicago Fed,Weekly,mean,0,level,feature,1
+CFNAI,Chicago Fed national activity index,Chicago Fed,Monthly,last,1,level,feature,1
+CFNAIMA3,Chicago Fed national activity index three month average,Chicago Fed,Monthly,last,1,level,feature,1
+UMCSENT,University of Michigan consumer sentiment,University of Michigan,Monthly,last,1,level,feature,1

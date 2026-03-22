@@ -1,0 +1,100 @@
+{
+  "all_text": {
+    "model": "all_text",
+    "best_c": 10.0,
+    "feature_count": 16252,
+    "validation": {
+      "accuracy": 0.5097102342786684,
+      "macro_f1": 0.5096447085724256,
+      "class_counts": {
+        "down": 3133,
+        "up": 3355
+      },
+      "prediction_counts": {
+        "down": 3280,
+        "up": 3208
+      },
+      "confusion_matrix": [
+        [
+          1616,
+          1517
+        ],
+        [
+          1664,
+          1691
+        ]
+      ]
+    },
+    "test": {
+      "accuracy": 0.5013135527739144,
+      "macro_f1": 0.5006605955151817,
+      "class_counts": {
+        "down": 3255,
+        "up": 3216
+      },
+      "prediction_counts": {
+        "down": 3450,
+        "up": 3021
+      },
+      "confusion_matrix": [
+        [
+          1739,
+          1516
+        ],
+        [
+          1711,
+          1505
+        ]
+      ]
+    }
+  },
+  "claim_aware": {
+    "model": "claim_aware",
+    "best_c": 10.0,
+    "feature_count": 16253,
+    "validation": {
+      "accuracy": 0.5101726263871763,
+      "macro_f1": 0.5101122954808102,
+      "class_counts": {
+        "down": 3133,
+        "up": 3355
+      },
+      "prediction_counts": {
+        "down": 3283,
+        "up": 3205
+      },
+      "confusion_matrix": [
+        [
+          1619,
+          1514
+        ],
+        [
+          1664,
+          1691
+        ]
+      ]
+    },
+    "test": {
+      "accuracy": 0.5006954102920723,
+      "macro_f1": 0.5000963927958011,
+      "class_counts": {
+        "down": 3255,
+        "up": 3216
+      },
+      "prediction_counts": {
+        "down": 3440,
+        "up": 3031
+      },
+      "confusion_matrix": [
+        [
+          1732,
+          1523
+        ],
+        [
+          1708,
+          1508
+        ]
+      ]
+    }
+  }
+}

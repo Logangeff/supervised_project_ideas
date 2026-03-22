@@ -1,0 +1,73 @@
+{
+  "seed": 42,
+  "nosible": {
+    "source_path": "C:\\Users\\xxtri\\Desktop\\Machine Learning\\PROJECT\\data\\financial-sentiment\\data.parquet",
+    "row_count": 100000,
+    "label_counts": {
+      "negative": 24434,
+      "neutral": 39309,
+      "positive": 36257
+    },
+    "splits": {
+      "train": {
+        "size": 80000,
+        "label_counts": {
+          "negative": 19547,
+          "neutral": 31447,
+          "positive": 29006
+        },
+        "artifact": {
+          "path": "C:\\Users\\xxtri\\Desktop\\Machine Learning\\PROJECT\\outputs\\splits\\nosible_train_indices.csv",
+          "size": 80000,
+          "sha256": "299dd788cfa3225e31d465cf92b05eb37fe3524793edd7cd3d4f89e9651b5939"
+        }
+      },
+      "validation": {
+        "size": 10000,
+        "label_counts": {
+          "negative": 2443,
+          "neutral": 3931,
+          "positive": 3626
+        },
+        "artifact": {
+          "path": "C:\\Users\\xxtri\\Desktop\\Machine Learning\\PROJECT\\outputs\\splits\\nosible_validation_indices.csv",
+          "size": 10000,
+          "sha256": "f1377b26f539a465be0bfbc800e877aef666a94a1d64f19bfae748249c76cb76"
+        }
+      },
+      "test": {
+        "size": 10000,
+        "label_counts": {
+          "negative": 2444,
+          "neutral": 3931,
+          "positive": 3625
+        },
+        "artifact": {
+          "path": "C:\\Users\\xxtri\\Desktop\\Machine Learning\\PROJECT\\outputs\\splits\\nosible_test_indices.csv",
+          "size": 10000,
+          "sha256": "639a94b4d8c68a88270e159bd745dfec87e15e4230244368f32b07fa69cd8643"
+        }
+      }
+    }
+  },
+  "loughran_mcdonald": {
+    "csv_path": "C:\\Users\\xxtri\\Desktop\\Machine Learning\\PROJECT\\data\\loughran_mcdonald\\Loughran-McDonald_MasterDictionary_1993-2024.csv",
+    "category_columns": [
+      "Negative",
+      "Positive",
+      "Uncertainty",
+      "Litigious",
+      "Strong_Modal",
+      "Weak_Modal",
+      "Constraining"
+    ],
+    "restricted_vocabulary_size": 3859
+  },
+  "smoke_checks": {
+    "nosible_row_count_is_100000": true,
+    "nosible_split_total_matches": true,
+    "nosible_labels_are_valid": true,
+    "lm_vocabulary_non_empty": true,
+    "repeated_split_hashes_match": true
+  }
+}

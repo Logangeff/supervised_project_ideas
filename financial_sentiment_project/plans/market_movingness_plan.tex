@@ -1,0 +1,63 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+
+\begin{document}
+
+\begin{center}
+{\Large MATH60629A: Machine Learning I -- Project Study Plan} \\
+\vspace{0.5em}
+{\large Project Title: Predicting Whether Financial News Is Market-Moving} \\
+\vspace{0.5em}
+Date: March 20, 2026 \\
+Team members: Logan Geffroy and Youssef Taoussi
+\end{center}
+
+\section*{1. Problem statement and research question}
+Many finance-oriented NLP projects stop at sentiment classification, even though the practical question in markets is usually not whether a headline sounds positive or negative, but whether it is followed by a meaningful price reaction. This project therefore studies a more finance-facing supervised task: given a dated, company-linked news headline, can a model predict whether the headline is followed by an unusually large next-day market reaction for the corresponding stock?
+
+The main research question is whether textual representations learned from the headline improve over a simple market-information baseline for this task. More concretely, we will compare a market-only baseline, a traditional bag-of-words text model, and a finance-domain transformer. The novelty is modest and appropriate for the course: we are not proposing a new algorithm, but rather formulating a well-scoped supervised prediction problem that is financially meaningful and that can later be extended into a larger project on abnormal returns, event ranking, or impact duration.
+
+\section*{2. Datasets}
+To keep the project feasible, we will work with one public source that already links financial news to market data. A suitable candidate is the FNSPID dataset (Financial News and Stock Price Integration Dataset), which combines dated financial news with stock-level time-series information. Rather than using the full resource, we will define a manageable subset at the start of the project, for example a restricted universe of liquid U.S.\ equities and a limited time window. This keeps the work focused on modeling and experimental design rather than large-scale data engineering.
+
+Each observation will correspond to one headline, one stock, and one publication date. The prediction target will be defined from the next trading day return of that stock. To make the label financially meaningful while remaining simple, the core version of the project will use a binary target:
+\begin{itemize}[leftmargin=1.5em]
+\item \emph{market-moving}: the next-day absolute return, or an abnormal-return proxy derived from it, exceeds a threshold fixed in advance;
+\item \emph{non-market-moving}: otherwise.
+\end{itemize}
+
+The exact thresholding rule will be declared before model training and kept fixed throughout the experiments. If needed, daily prices from Yahoo Finance can be used only to verify return calculations and trading-day alignment.
+
+\section*{3. Proposed methodology}
+We model the problem as supervised classification from headline text $x$ (and, for one baseline, simple market variables $z$) to a binary label $y \in \{0,1\}$ indicating whether the event is market-moving.
+
+The first baseline will deliberately ignore text and use only a small set of numerical market features available before the event, such as recent return, recent volatility, or volume proxies. This provides an important control: if a text model does not beat a simple market-only predictor, then the added complexity is difficult to justify.
+
+The second model will be a standard text baseline based on TF--IDF bag-of-words features and Logistic Regression. This is a strong and interpretable benchmark for short texts, and it will show how far a simple lexical representation can go on the task. Because the target is no longer sentiment but price impact, this baseline is also useful for testing whether lexical cues in headlines contain predictive information beyond recent market behavior.
+
+The third model will be a finance-domain transformer such as FinBERT. In the minimal version of the project, the transformer can be used either off-the-shelf as a fixed encoder or fine-tuned on the training split. The aim is not to build a complicated architecture, but to test whether pretrained financial language representations improve prediction on a task closer to market behavior than standard sentiment classification.
+
+\section*{4. Design and execution of experiments}
+The experimental design will be chronological rather than random. Since the target depends on future price reactions, the data will be split by date into train, validation, and test periods in order to avoid temporal leakage. Hyperparameters will be selected only on the validation period, and final reporting will use the held-out test period.
+
+Performance will be measured with Accuracy and macro-F1, with confusion matrices included for the main models. If the classes are noticeably imbalanced, we will report the class distribution and interpret macro-F1 as the primary metric. To keep the comparison fair, all text models will use exactly the same train/validation/test split and the same target definition.
+
+The main comparison will answer three questions. First, does text add predictive value over a market-only baseline? Second, is a simple bag-of-words representation already sufficient, or does a finance-domain transformer provide a clear improvement? Third, how sensitive are the results to the chosen threshold that defines a market-moving event? If time permits, one robustness check will vary this threshold slightly, but the core project will keep the target fixed to remain modest.
+
+\section*{5. Questions for discussion}
+\begin{enumerate}[leftmargin=1.5em]
+\item Is the proposed binary definition of a market-moving event appropriate for the course project, or would you recommend a simpler return-sign target for the first version?
+\item For a project of this scope, would you prefer that the transformer be treated as an optional extension rather than as a core model, in order to keep the comparison centered on course methods?
+\item Is a chronological split with one public asset-linked news source sufficient for the course, provided that the target definition and data-cleaning rules are fixed in advance and clearly documented?
+\end{enumerate}
+
+\end{document}

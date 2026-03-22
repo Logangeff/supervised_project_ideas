@@ -1,0 +1,65 @@
+{
+  "dataset_id": "luckycat37/financial-news-dataset",
+  "raw_file_count": 7,
+  "filter_counts": {
+    "raw_rows": 70974,
+    "kept_rows": 43350,
+    "dropped_ticker_mapping": 19702,
+    "dropped_missing_prices": 7764,
+    "dropped_zero_change": 158
+  },
+  "final_row_count": 43350,
+  "label_counts": {
+    "down": 21107,
+    "up": 22243
+  },
+  "split_rule": {
+    "type": "chronological_by_date_blocks",
+    "train_ratio": 0.7,
+    "validation_ratio": 0.15,
+    "test_ratio": 0.15,
+    "seed": 42
+  },
+  "splits": {
+    "train": {
+      "size": 30391,
+      "label_counts": {
+        "down": 14719,
+        "up": 15672
+      },
+      "date_range": {
+        "min_date": "2017-01-04",
+        "max_date": "2023-01-17"
+      }
+    },
+    "validation": {
+      "size": 6488,
+      "label_counts": {
+        "down": 3133,
+        "up": 3355
+      },
+      "date_range": {
+        "min_date": "2023-01-18",
+        "max_date": "2023-07-18"
+      }
+    },
+    "test": {
+      "size": 6471,
+      "label_counts": {
+        "down": 3255,
+        "up": 3216
+      },
+      "date_range": {
+        "min_date": "2023-07-19",
+        "max_date": "2023-12-27"
+      }
+    }
+  },
+  "smoke_checks": {
+    "filtered_dataset_non_empty": true,
+    "no_zero_change_rows": true,
+    "single_ticker_rows_only": true,
+    "chronology_is_strict": true,
+    "split_total_matches": true
+  }
+}

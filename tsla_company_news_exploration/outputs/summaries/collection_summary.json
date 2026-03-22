@@ -1,0 +1,15 @@
+{
+  "ticker": "TSLA",
+  "company_name": "Tesla",
+  "price_history_rows": 502,
+  "price_date_range": {
+    "min_date": "2024-03-21",
+    "max_date": "2026-03-20"
+  },
+  "headline_rows": 2390,
+  "headline_date_range": {
+    "min_date": "2024-03-01",
+    "max_date": "2026-03-20"
+  },
+  "headline_publishers": 350
+}
