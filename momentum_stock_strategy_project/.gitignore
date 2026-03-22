@@ -1,0 +1,10 @@
+data/raw/
+data/processed/
+data/*.duckdb
+data/*.duckdb-*
+outputs/
+config/wrds_credentials.json
+config/watchlist.csv
+__pycache__/
+*.pyc
+*.log
