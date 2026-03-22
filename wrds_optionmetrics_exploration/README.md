@@ -1,16 +1,59 @@
 # WRDS + OptionMetrics Exploration
 
-This project implements a 2-part supervised pipeline for **realized-volatility regime classification**:
+This project asks a focused supervised-learning question:
 
-- **Part 1:** stock-only panel and baselines
-- **Part 2:** OptionMetrics feature increment and complete-case comparison
-- **Extension:** daily implied-volatility surface descriptors built from the cached option data
-- **Calibrated extension:** forward-based, OTM-only 5-beta daily surface calibration inspired by the earlier `tp2` project, but implemented with the current caching and panel logic
-- **Phase 2 decision layer:** probability-scaled risk overlay that converts the high-volatility probabilities into next-day exposure scaling
-- **Phase 2 bucket analysis:** cross-sectional bucket sorting that tests whether higher predicted risk maps to higher future realized volatility and hit rates
-- **Text/news extension:** a restricted 2020-2023 news-covered subpanel that tests whether Yahoo Finance article intensity, sentiment, and claim-like materiality add value beyond stock + option + surface features
+> Do option-implied features improve prediction of future stock-level volatility stress beyond stock-only features?
 
-## Setup
+The main target is whether a stock enters a **high-volatility regime over the next 20 trading days**. The strongest result is not the portfolio overlay branch. It is the finding that **option-aware probabilities are materially better at ranking future stock-level risk**, which makes them useful for cross-sectional screening and risk triage.
+
+## Main Story
+
+- **Target:** future 20-day high-volatility regime
+- **Data:** CRSP-style stock panel + OptionMetrics option panel + daily surface descriptors
+- **Main model:** fixed-split logistic regression
+- **Benchmarks:** XGBoost, 2-year trailing retrain, 5-year trailing retrain
+- **Main usefulness result:** Phase 2 bucket analysis shows that higher predicted-risk buckets consistently map to higher future realized volatility and higher high-volatility hit rates
+
+## Headline Result
+
+On the common test panel:
+
+- `Stock Only` is meaningfully weaker
+- `Option Only` is much stronger
+- `Stock + Option + Surface` is the clean headline result
+
+For the practical Phase 2 ranking use case:
+
+- `Stock + Option + Surface` average daily rank IC is about `0.733`
+- top-minus-bottom high-volatility hit-rate spread is about `61.7%`
+- XGBoost helps the weak stock-only branch, but does **not** clearly beat the original option-driven result
+- 2Y and 5Y trailing retrains are essentially ties on the strongest option-aware signals
+
+## Dashboard
+
+Launch the professor-facing dashboard from the project root:
+
+```bat
+cd wrds_optionmetrics_exploration
+launch_bucket_dashboard.bat
+```
+
+or directly:
+
+```bat
+python -m streamlit run app/streamlit_bucket_dashboard.py
+```
+
+The dashboard is organized as:
+
+1. `Overview`
+2. `Core Result`
+3. `Benchmark Comparison`
+4. `Single-Stock Drill-Down`
+5. `Data Quality`
+6. `Appendix`
+
+## Minimal Setup
 
 ```bat
 cd wrds_optionmetrics_exploration
@@ -20,108 +63,61 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-## WRDS access
+## WRDS Access
 
-The extraction phases use the Python `wrds` client if it is installed and credentials are available.
+The extraction phases use the Python `wrds` client if credentials are available.
 
-You can provide credentials with environment variables:
+Environment variables:
 
 ```bat
 set WRDS_USERNAME=your_username
 set WRDS_PASSWORD=your_password
 ```
 
-Or place them in a local file that is ignored by git:
+Or a local ignored file:
 
 ```text
 config/wrds_credentials.json
 ```
 
-with this shape:
-
-```json
-{
-  "username": "your_wrds_username",
-  "password": "your_wrds_password"
-}
-```
-
-Start from:
+starting from:
 
 ```text
 config/wrds_credentials.template.json
 ```
 
-If raw parquet files already exist under `data/raw/stock` or `data/raw/options`, the pipeline will reuse them and skip WRDS extraction.
+If cached parquet files already exist under `data/raw/stock` and `data/raw/options`, the project reuses them and skips extraction.
 
-## Main phases
+## Main Phases
 
 ```bat
 python -m src.main --phase extract_stock_data
 python -m src.main --phase build_stock_panel
-python -m src.main --phase train_part1
-python -m src.main --phase test_wrds_connection
 python -m src.main --phase extract_option_data
 python -m src.main --phase build_option_features
-python -m src.main --phase train_part2
 python -m src.main --phase build_surface_factors
 python -m src.main --phase train_surface_extension
-python -m src.main --phase extract_calibrated_surface_inputs
-python -m src.main --phase build_calibrated_surface
 python -m src.main --phase train_calibrated_surface_extension
-python -m src.main --phase run_phase2_decision
 python -m src.main --phase run_phase2_bucket_analysis
-python -m src.main --phase build_text_news_panel
-python -m src.main --phase train_text_news_extension
-python -m src.main --phase smoke
 python -m src.main --phase results
 python -m src.main --phase all
 ```
 
-## Outputs
+## Important Saved Outputs
 
+- `outputs/metrics/surface_extension_metrics.csv`
+- `outputs/metrics/surface_extension_predictions.csv`
+- `outputs/metrics/phase2_bucket_analysis_metrics.csv`
+- `outputs/metrics/phase2_bucket_analysis_diagnostics.csv`
 - `outputs/summaries/extract_stock_data_summary.json`
 - `outputs/summaries/build_stock_panel_summary.json`
-- `outputs/metrics/part1_metrics.json`
 - `outputs/summaries/extract_option_data_summary.json`
 - `outputs/summaries/build_option_features_summary.json`
-- `outputs/metrics/part2_metrics.json`
 - `outputs/summaries/build_surface_factors_summary.json`
-- `outputs/metrics/surface_extension_metrics.json`
-- `outputs/summaries/extract_calibrated_surface_inputs_summary.json`
-- `outputs/summaries/build_calibrated_surface_summary.json`
-- `outputs/metrics/calibrated_surface_extension_metrics.json`
-- `outputs/metrics/phase2_decision_metrics.json`
-- `outputs/metrics/phase2_decision_daily_returns.csv`
-- `outputs/metrics/phase2_bucket_analysis_metrics.json`
-- `outputs/metrics/phase2_bucket_analysis_diagnostics.csv`
-- `outputs/summaries/build_text_news_panel_summary.json`
-- `outputs/metrics/text_news_extension_metrics.json`
-- `outputs/metrics/text_news_extension_predictions.csv`
-- `outputs/summaries/smoke_summary.json`
 
-## Bucket Dashboard
+## Scope Notes
 
-The project includes a read-only Streamlit dashboard for the successful Phase 2 bucket-analysis branch.
-
-```bat
-cd wrds_optionmetrics_exploration
-launch_bucket_dashboard.bat
-```
-
-or
-
-```bat
-python -m streamlit run app/streamlit_bucket_dashboard.py
-```
-
-## Notes
-
-- The universe file is in `data/universe/current_sp100_like_tickers.csv`.
-- The project uses a static current large-cap universe on purpose.
-- The WRDS schema can differ by subscription and local access. If a table name differs from the defaults, update `src/config.py`.
-- The surface extension reuses the existing cached yearly option parquet files; it does not repull WRDS data if the raw files are already present.
-- The calibrated-surface extension is separate from the finished v1 result. It adds forward-based moneyness, OTM filtering, and daily 5-beta calibration while keeping the original Part 1 / Part 2 outputs unchanged.
-- The Phase 2 decision layer reuses saved prediction files and the cached stock panel. It does not repull WRDS data.
-- The Phase 2 bucket analysis also reuses only saved prediction files and the cached stock panel. It is meant to test sorting usefulness even when the portfolio overlays are not compelling.
-- The text/news extension reuses the local Yahoo Finance article archive already present in the repository. It does not repull WRDS or scrape fresh news.
+- The fixed chronological train / validation / test split remains the **headline evaluation design**.
+- XGBoost and trailing retrains are kept as **robustness benchmarks**, not replacements.
+- The calibrated-surface branch remains in the repo as a secondary extension.
+- The portfolio overlay and text/news branches remain in the repo, but they are **not** the default presentation path because they were not the strongest results.
