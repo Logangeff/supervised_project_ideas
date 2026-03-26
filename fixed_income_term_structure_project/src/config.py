@@ -12,6 +12,7 @@ METRICS_DIR = ROOT_DIR / "outputs" / "metrics"
 SUMMARIES_DIR = ROOT_DIR / "outputs" / "summaries"
 
 FRED_BASE_CSV_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
+FED_NOMINAL_CSV_URL = "https://www.federalreserve.gov/data/yield-curve-tables/feds200628.csv"
 
 TREASURY_SERIES = [
     {"series_id": "DGS1MO", "label": "1M", "maturity_years": 1.0 / 12.0},
@@ -33,10 +34,10 @@ BOOTSTRAP_GRID = [round(step * 0.5, 6) for step in range(1, 61)]
 MODEL_EVAL_GRID = [0.5, 1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 20.0, 30.0]
 PAR_SWAP_MATURITIES = [2.0, 5.0, 10.0, 30.0]
 BOND_PRICING_MATURITIES = [2.0, 5.0, 10.0, 30.0]
+FED_BENCHMARK_MATURITIES = list(range(1, 31))
 
 DEFAULT_START_DATE = "2010-01-01"
 SMOKE_START_DATE = "2022-01-01"
 
 HULL_WHITE_DEFAULT_A = 0.10
 HULL_WHITE_DEFAULT_SIGMA = 0.01
-

@@ -3,51 +3,89 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from .config import MIN_HISTORY_DAYS, MIN_MEDIAN_DOLLAR_VOLUME, MIN_PRICE, SECTOR_ETF_MAP, UNIVERSE_TARGET_COUNT
+from .config import MIN_HISTORY_DAYS, MIN_MEDIAN_DOLLAR_VOLUME, MIN_PRICE, SECTOR_ETF_MAP
 
 
-def build_latest_universe(universe_source: pd.DataFrame, prices: pd.DataFrame) -> pd.DataFrame:
-    stocks = prices[prices["ticker"].isin(universe_source["ticker"])].copy()
-    stocks["dollar_volume"] = stocks["adj_close"] * stocks["volume"]
-    stocks = stocks.sort_values(["ticker", "date"])
-
-    summaries: list[dict[str, object]] = []
-    for ticker, frame in stocks.groupby("ticker", sort=True):
-        last_60 = frame.tail(60)
-        last_row = frame.iloc[-1]
-        summaries.append(
-            {
-                "ticker": ticker,
-                "latest_date": last_row["date"],
-                "latest_adj_close": float(last_row["adj_close"]),
-                "median_dollar_volume_60": float(last_60["dollar_volume"].median()),
-                "history_days": int(frame["date"].nunique()),
-            }
+def build_point_in_time_universe(
+    universe_source: pd.DataFrame,
+    prices: pd.DataFrame,
+    target_count: int | None = None,
+) -> pd.DataFrame:
+    static_cols = [column for column in ["ticker", "company_name", "sector", "siccd", "index_source"] if column in universe_source.columns]
+    static = universe_source[static_cols].drop_duplicates("ticker").copy()
+    stocks = prices[prices["ticker"].isin(static["ticker"])].copy()
+    if stocks.empty:
+        return pd.DataFrame(
+            columns=[
+                "date",
+                "ticker",
+                "company_name",
+                "sector",
+                "sector_etf",
+                "latest_adj_close",
+                "median_dollar_volume_60",
+                "history_days",
+                "eligible",
+                "universe_rank",
+            ]
         )
 
-    stats = pd.DataFrame.from_records(summaries)
-    base = universe_source.drop(
-        columns=[
-            "latest_date",
+    stocks["date"] = pd.to_datetime(stocks["date"])
+    stocks = stocks.sort_values(["ticker", "date"]).copy()
+    stocks["dollar_volume"] = stocks["close"] * stocks["volume"]
+    stocks["median_dollar_volume_60"] = (
+        stocks.groupby("ticker", sort=False)["dollar_volume"].transform(lambda series: series.rolling(60, min_periods=40).median())
+    )
+    stocks["history_days"] = stocks.groupby("ticker", sort=False).cumcount() + 1
+    stocks["latest_adj_close"] = stocks["close"]
+
+    membership = stocks.merge(static, on="ticker", how="left")
+    for column in ("company_name", "sector"):
+        if column not in membership.columns:
+            membership[column] = np.nan
+    membership["eligible"] = (
+        membership["latest_adj_close"].fillna(0.0) >= MIN_PRICE
+    ) & (
+        membership["median_dollar_volume_60"].fillna(0.0) >= MIN_MEDIAN_DOLLAR_VOLUME
+    ) & (
+        membership["history_days"].fillna(0).astype(int) >= MIN_HISTORY_DAYS
+    )
+    membership = membership[membership["eligible"]].copy()
+    if membership.empty:
+        return membership
+
+    membership["universe_rank"] = (
+        membership.groupby("date", sort=False)["median_dollar_volume_60"]
+        .rank(method="first", ascending=False)
+        .astype(int)
+    )
+    if target_count is not None:
+        membership = membership[membership["universe_rank"] <= int(target_count)].copy()
+
+    membership["sector"] = membership["sector"].fillna("Unknown")
+    membership["sector_etf"] = membership["sector"].map(SECTOR_ETF_MAP).fillna("SPY")
+    membership = membership[
+        [
+            "date",
+            "ticker",
+            "company_name",
+            "sector",
+            "sector_etf",
             "latest_adj_close",
             "median_dollar_volume_60",
             "history_days",
             "eligible",
             "universe_rank",
-            "sector_etf",
-        ],
-        errors="ignore",
-    )
-    merged = base.merge(stats, on="ticker", how="left")
-    merged["eligible"] = (
-        merged["latest_adj_close"].fillna(0.0) >= MIN_PRICE
-    ) & (
-        merged["median_dollar_volume_60"].fillna(0.0) >= MIN_MEDIAN_DOLLAR_VOLUME
-    ) & (
-        merged["history_days"].fillna(0).astype(int) >= MIN_HISTORY_DAYS
-    )
-    eligible = merged[merged["eligible"]].copy()
-    eligible = eligible.sort_values("median_dollar_volume_60", ascending=False).head(UNIVERSE_TARGET_COUNT)
-    eligible["universe_rank"] = np.arange(1, len(eligible) + 1)
-    eligible["sector_etf"] = eligible["sector"].map(SECTOR_ETF_MAP).fillna("SPY")
-    return eligible.reset_index(drop=True)
+        ]
+    ].sort_values(["date", "universe_rank", "ticker"])
+    return membership.reset_index(drop=True)
+
+
+def build_latest_universe(universe_membership: pd.DataFrame) -> pd.DataFrame:
+    if universe_membership.empty:
+        return universe_membership
+    latest_date = pd.to_datetime(universe_membership["date"]).max()
+    latest = universe_membership[universe_membership["date"] == latest_date].copy()
+    latest = latest.sort_values(["universe_rank", "ticker"]).reset_index(drop=True)
+    latest["universe_rank"] = np.arange(1, len(latest) + 1)
+    return latest

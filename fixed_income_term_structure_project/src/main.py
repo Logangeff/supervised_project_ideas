@@ -11,6 +11,8 @@ import pandas as pd
 from .config import (
     BOOTSTRAP_GRID,
     DEFAULT_START_DATE,
+    DOCS_DIR,
+    FED_BENCHMARK_MATURITIES,
     FIGURES_DIR,
     METRICS_DIR,
     MODEL_EVAL_GRID,
@@ -29,21 +31,26 @@ from .curves import (
     quote_yield_from_discount_curve,
 )
 from .models import build_cir_curve, build_hull_white_curve, build_vasicek_curve, estimate_ou_parameters, fit_cir_curve, fit_vasicek_curve
-from .nss import build_nss_curve, fit_nss_parameters
-from .rates import build_monthly_snapshots, fetch_public_rates
+from .nss import build_nss_curve, fit_nss_parameters, nss_zero_yield
+from .rates import build_monthly_snapshots, fetch_fed_nominal_curve, fetch_public_rates
 from .reporting import write_csv, write_json
 
 
 RAW_RATES_PATH = RAW_DIR / "public_rates_daily.csv"
+FED_NOMINAL_DAILY_PATH = RAW_DIR / "fed_nominal_curve_daily.csv"
 MONTHLY_RATES_PATH = PROCESSED_DIR / "monthly_rates.csv"
 BOOTSTRAP_CURVES_PATH = PROCESSED_DIR / "bootstrap_curves.csv"
 NSS_PARAMETERS_PATH = PROCESSED_DIR / "nss_parameters.csv"
 NSS_CURVES_PATH = PROCESSED_DIR / "nss_curves.csv"
+FED_MONTHLY_PATH = PROCESSED_DIR / "fed_nominal_curve_monthly.csv"
+FED_CURVES_PATH = PROCESSED_DIR / "fed_benchmark_curves.csv"
 MODEL_PARAMETERS_PATH = PROCESSED_DIR / "model_parameters.csv"
 MODEL_CURVES_PATH = PROCESSED_DIR / "model_curves.csv"
 PRICING_DETAILS_PATH = PROCESSED_DIR / "pricing_details.csv"
 SWAP_DETAILS_PATH = PROCESSED_DIR / "swap_rate_details.csv"
 OBSERVED_CURVE_DETAILS_PATH = PROCESSED_DIR / "observed_curve_comparison.csv"
+FED_CURVE_DETAILS_PATH = PROCESSED_DIR / "fed_curve_comparison.csv"
+TP1_VALIDATION_PATH = PROCESSED_DIR / "tp1_fed_validation.csv"
 
 
 def _load_frame(path: Path, parse_dates: list[str] | None = None) -> pd.DataFrame:
@@ -100,6 +107,179 @@ def phase_fetch_public_rates(start_date: str, write_outputs: bool = True) -> pd.
         write_csv(RAW_RATES_PATH, daily_rates)
         write_json(SUMMARIES_DIR / "fetch_public_rates_summary.json", summary)
     return daily_rates
+
+
+def _safe_fed_params(row: pd.Series) -> dict:
+    beta3 = pd.to_numeric(row.get("BETA3"), errors="coerce")
+    tau2 = pd.to_numeric(row.get("TAU2"), errors="coerce")
+    if pd.isna(beta3):
+        beta3 = 0.0
+    if pd.isna(tau2) or float(tau2) <= 0.0 or float(tau2) >= 900.0:
+        tau2 = max(float(pd.to_numeric(row.get("TAU1"), errors="coerce")), 1e-6)
+        beta3 = 0.0
+    return {
+        "beta0": float(pd.to_numeric(row["BETA0"], errors="coerce")) / 100.0,
+        "beta1": float(pd.to_numeric(row["BETA1"], errors="coerce")) / 100.0,
+        "beta2": float(pd.to_numeric(row["BETA2"], errors="coerce")) / 100.0,
+        "beta3": float(beta3) / 100.0,
+        "tau1": float(pd.to_numeric(row["TAU1"], errors="coerce")),
+        "tau2": float(tau2),
+    }
+
+
+def phase_fetch_fed_benchmark(start_date: str, write_outputs: bool = True) -> pd.DataFrame:
+    if write_outputs and FED_NOMINAL_DAILY_PATH.exists():
+        fed_daily = _load_frame(FED_NOMINAL_DAILY_PATH, parse_dates=["date"])
+        if not fed_daily.empty and str(fed_daily["date"].min().date()) <= start_date:
+            return fed_daily[fed_daily["date"] >= pd.Timestamp(start_date)].reset_index(drop=True)
+    fed_daily = fetch_fed_nominal_curve(start_date=start_date)
+    sveny_columns = [f"SVENY{maturity:02d}" for maturity in FED_BENCHMARK_MATURITIES]
+    summary = {
+        "start_date": str(fed_daily["date"].min().date()),
+        "end_date": str(fed_daily["date"].max().date()),
+        "rows": int(len(fed_daily)),
+        "published_sveny_columns": sveny_columns,
+        "missing_share_sveny": {column: float(fed_daily[column].isna().mean()) for column in sveny_columns if column in fed_daily.columns},
+    }
+    if write_outputs:
+        write_csv(FED_NOMINAL_DAILY_PATH, fed_daily)
+        write_json(SUMMARIES_DIR / "fetch_fed_benchmark_summary.json", summary)
+    return fed_daily
+
+
+def phase_build_fed_benchmark_curves(start_date: str, write_outputs: bool = True) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    if write_outputs and FED_MONTHLY_PATH.exists() and FED_CURVES_PATH.exists():
+        fed_monthly = _load_frame(FED_MONTHLY_PATH, parse_dates=["date"])
+        fed_curves = _load_frame(FED_CURVES_PATH, parse_dates=["date"])
+        if not fed_monthly.empty and str(fed_monthly["date"].min().date()) <= start_date:
+            fed_monthly = fed_monthly[fed_monthly["date"] >= pd.Timestamp(start_date)].reset_index(drop=True)
+            fed_curves = fed_curves[fed_curves["date"] >= pd.Timestamp(start_date)].reset_index(drop=True)
+            reconstruction_check = _load_frame(METRICS_DIR / "fed_reconstruction_check.csv", parse_dates=["date"])
+            reconstruction_check = reconstruction_check[reconstruction_check["date"] >= pd.Timestamp(start_date)].reset_index(drop=True)
+            return fed_monthly, fed_curves, reconstruction_check
+
+    fed_daily = phase_fetch_fed_benchmark(start_date=start_date, write_outputs=write_outputs)
+    fed_monthly = build_monthly_snapshots(fed_daily)
+    curve_records: list[dict] = []
+    reconstruction_records: list[dict] = []
+
+    for row in fed_monthly.itertuples(index=False):
+        row_series = pd.Series(row._asdict())
+        params = _safe_fed_params(row_series)
+        for maturity in BOOTSTRAP_GRID:
+            zero_yield = nss_zero_yield(maturity, **params)
+            curve_records.append(
+                {
+                    "date": row_series["date"],
+                    "maturity_years": maturity,
+                    "zero_yield": float(zero_yield),
+                    "discount_factor": float(np.exp(-zero_yield * maturity)),
+                }
+            )
+        for maturity in FED_BENCHMARK_MATURITIES:
+            column = f"SVENY{maturity:02d}"
+            published = pd.to_numeric(row_series.get(column), errors="coerce")
+            if pd.isna(published):
+                continue
+            reconstructed = nss_zero_yield(float(maturity), **params) * 100.0
+            reconstruction_records.append(
+                {
+                    "date": row_series["date"],
+                    "maturity_years": float(maturity),
+                    "published_sveny": float(published),
+                    "reconstructed_sveny": float(reconstructed),
+                    "reconstruction_error": float(reconstructed - published),
+                }
+            )
+
+    fed_curves = pd.DataFrame(curve_records).sort_values(["date", "maturity_years"]).reset_index(drop=True)
+    forward_frames: list[pd.DataFrame] = []
+    for _, frame in fed_curves.groupby("date", sort=False):
+        frame = frame.copy().reset_index(drop=True)
+        forward_rates = [float(frame.iloc[0]["zero_yield"])]
+        for idx in range(1, len(frame)):
+            forward_rates.append(
+                float(
+                    -np.log(frame.iloc[idx]["discount_factor"] / frame.iloc[idx - 1]["discount_factor"])
+                    / (frame.iloc[idx]["maturity_years"] - frame.iloc[idx - 1]["maturity_years"])
+                )
+            )
+        frame["forward_rate"] = forward_rates
+        forward_frames.append(frame)
+    fed_curves = pd.concat(forward_frames, ignore_index=True)
+    reconstruction_check = pd.DataFrame(reconstruction_records).sort_values(["date", "maturity_years"]).reset_index(drop=True)
+    recon_summary = {
+        "monthly_snapshot_count": int(fed_monthly["date"].nunique()),
+        "reconstruction_rmse_bps": float(np.sqrt(np.mean(np.square(reconstruction_check["reconstruction_error"]))) * 100.0),
+        "reconstruction_mae_bps": float(np.mean(np.abs(reconstruction_check["reconstruction_error"])) * 100.0),
+        "overlap_points": int(len(reconstruction_check)),
+    }
+
+    tp1_path = DOCS_DIR / "TP1 - Submission" / "TP1 data 60201 W2026.xlsx"
+    tp1_summary = {"available": False}
+    if tp1_path.exists():
+        try:
+            tp1_data = pd.read_excel(tp1_path)
+            tp1_data["Date"] = pd.to_datetime(tp1_data["Date"], errors="coerce")
+            overlap = tp1_data.merge(
+                fed_monthly[["date", "BETA0", "BETA1", "BETA2", "BETA3", "TAU1", "TAU2"]],
+                left_on="Date",
+                right_on="date",
+                how="inner",
+            )
+            if not overlap.empty:
+                tp1_records: list[dict] = []
+                for row in overlap.itertuples(index=False):
+                    tp1_params = {
+                        "beta0": float(row.BETA0_x) / 100.0,
+                        "beta1": float(row.BETA1_x) / 100.0,
+                        "beta2": float(row.BETA2_x) / 100.0,
+                        "beta3": float(row.BETA3_x) / 100.0,
+                        "tau1": float(row.TAU1_x),
+                        "tau2": float(row.TAU2_x),
+                    }
+                    fed_params = _safe_fed_params(
+                        pd.Series(
+                            {
+                                "BETA0": row.BETA0_y,
+                                "BETA1": row.BETA1_y,
+                                "BETA2": row.BETA2_y,
+                                "BETA3": row.BETA3_y,
+                                "TAU1": row.TAU1_y,
+                                "TAU2": row.TAU2_y,
+                            }
+                        )
+                    )
+                    for maturity in FED_BENCHMARK_MATURITIES:
+                        tp1_yield = nss_zero_yield(float(maturity), **tp1_params) * 100.0
+                        fed_yield = nss_zero_yield(float(maturity), **fed_params) * 100.0
+                        tp1_records.append(
+                            {
+                                "date": row.Date,
+                                "maturity_years": float(maturity),
+                                "tp1_sveny": float(tp1_yield),
+                                "fed_sveny": float(fed_yield),
+                                "yield_error": float(tp1_yield - fed_yield),
+                            }
+                        )
+                tp1_validation = pd.DataFrame(tp1_records)
+                tp1_summary = {
+                    "available": True,
+                    "overlap_dates": int(tp1_validation["date"].nunique()),
+                    "yield_rmse_bps": float(np.sqrt(np.mean(np.square(tp1_validation["yield_error"]))) * 100.0),
+                    "yield_mae_bps": float(np.mean(np.abs(tp1_validation["yield_error"])) * 100.0),
+                }
+                if write_outputs:
+                    write_csv(TP1_VALIDATION_PATH, tp1_validation)
+        except Exception as exc:
+            tp1_summary = {"available": True, "error": str(exc)}
+
+    if write_outputs:
+        write_csv(FED_MONTHLY_PATH, fed_monthly)
+        write_csv(FED_CURVES_PATH, fed_curves)
+        write_csv(METRICS_DIR / "fed_reconstruction_check.csv", reconstruction_check)
+        write_json(SUMMARIES_DIR / "build_fed_benchmark_summary.json", {**recon_summary, "tp1_validation": tp1_summary})
+    return fed_monthly, fed_curves, reconstruction_check
 
 
 def phase_build_bootstrap_curves(start_date: str, write_outputs: bool = True) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -344,15 +524,69 @@ def _compute_observed_curve_fit(monthly_rates: pd.DataFrame, nss_curves: pd.Data
     return details, metrics
 
 
-def _plot_curve_examples(nss_curves: pd.DataFrame, model_curves: pd.DataFrame) -> None:
+def _compute_fed_curve_fit(fed_monthly: pd.DataFrame, fed_curves: pd.DataFrame, nss_curves: pd.DataFrame, model_curves: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    detail_records: list[dict] = []
+    fed_curve_map = {date_value: curve.reset_index(drop=True) for date_value, curve in fed_curves.groupby("date", sort=True)}
+    nss_curve_map = {date_value: curve.reset_index(drop=True) for date_value, curve in nss_curves.groupby("date", sort=True)}
+    model_curve_map = {(date_value, model_name): curve.reset_index(drop=True) for (date_value, model_name), curve in model_curves.groupby(["date", "model"], sort=True)}
+
+    for row in fed_monthly.itertuples(index=False):
+        date_value = row.date
+        fed_curve = fed_curve_map.get(date_value)
+        nss_curve = nss_curve_map.get(date_value)
+        if fed_curve is None or nss_curve is None:
+            continue
+        curve_map = {"Fed published benchmark": fed_curve, "NSS benchmark": nss_curve}
+        for model_name in ["Vasicek", "CIR", "Hull-White 1F"]:
+            model_curve = model_curve_map.get((date_value, model_name))
+            if model_curve is not None:
+                curve_map[model_name] = model_curve
+        for maturity in FED_BENCHMARK_MATURITIES:
+            column = f"SVENY{maturity:02d}"
+            published = pd.to_numeric(getattr(row, column), errors="coerce")
+            if pd.isna(published):
+                continue
+            benchmark_yield = float(published) / 100.0
+            for model_name, curve in curve_map.items():
+                curve_slice = curve[curve["maturity_years"] == float(maturity)]
+                if curve_slice.empty:
+                    continue
+                implied_yield = float(curve_slice["zero_yield"].iloc[0])
+                detail_records.append(
+                    {
+                        "date": date_value,
+                        "model": model_name,
+                        "maturity_years": float(maturity),
+                        "fed_benchmark_yield": benchmark_yield,
+                        "implied_yield": implied_yield,
+                        "yield_error": implied_yield - benchmark_yield,
+                    }
+                )
+    details = pd.DataFrame(detail_records)
+    metrics = (
+        details.groupby("model", as_index=False)
+        .agg(
+            fed_yield_rmse=("yield_error", lambda values: float(np.sqrt(np.mean(np.square(values))))),
+            fed_yield_mae=("yield_error", lambda values: float(np.mean(np.abs(values)))),
+            points=("yield_error", "count"),
+        )
+        .sort_values("fed_yield_rmse")
+        .reset_index(drop=True)
+    )
+    return details, metrics
+
+
+def _plot_curve_examples(fed_curves: pd.DataFrame, nss_curves: pd.DataFrame, model_curves: pd.DataFrame) -> None:
     latest_date = pd.to_datetime(nss_curves["date"]).max()
+    fed_benchmark = fed_curves[pd.to_datetime(fed_curves["date"]) == latest_date]
     benchmark = nss_curves[pd.to_datetime(nss_curves["date"]) == latest_date]
     plt.figure(figsize=(10, 6))
+    plt.plot(fed_benchmark["maturity_years"], fed_benchmark["zero_yield"] * 100.0, label="Fed published benchmark", linewidth=2.5, color="#7c3aed")
     plt.plot(benchmark["maturity_years"], benchmark["zero_yield"] * 100.0, label="NSS benchmark", linewidth=2.5, color="#111827")
     colors = {"Vasicek": "#1d4ed8", "CIR": "#dc2626", "Hull-White 1F": "#059669"}
     for model_name, curve in model_curves[pd.to_datetime(model_curves["date"]) == latest_date].groupby("model", sort=True):
         plt.plot(curve["maturity_years"], curve["zero_yield"] * 100.0, label=model_name, linewidth=1.8, color=colors.get(model_name))
-    plt.title(f"Curve Comparison on {latest_date.date()}")
+    plt.title(f"Fed / NSS / Model Curve Comparison on {latest_date.date()}")
     plt.xlabel("Maturity (years)")
     plt.ylabel("Zero yield (%)")
     plt.legend()
@@ -361,10 +595,11 @@ def _plot_curve_examples(nss_curves: pd.DataFrame, model_curves: pd.DataFrame) -
     plt.close()
 
     plt.figure(figsize=(10, 6))
+    plt.plot(fed_benchmark["maturity_years"], fed_benchmark["forward_rate"] * 100.0, label="Fed published benchmark", linewidth=2.5, color="#7c3aed")
     plt.plot(benchmark["maturity_years"], benchmark["forward_rate"] * 100.0, label="NSS benchmark", linewidth=2.5, color="#111827")
     for model_name, curve in model_curves[pd.to_datetime(model_curves["date"]) == latest_date].groupby("model", sort=True):
         plt.plot(curve["maturity_years"], curve["forward_rate"] * 100.0, label=model_name, linewidth=1.8, color=colors.get(model_name))
-    plt.title(f"Forward Curve Comparison on {latest_date.date()}")
+    plt.title(f"Fed / NSS / Model Forward Curve Comparison on {latest_date.date()}")
     plt.xlabel("Maturity (years)")
     plt.ylabel("Forward rate (%)")
     plt.legend()
@@ -388,16 +623,30 @@ def phase_evaluate_models(start_date: str, write_outputs: bool = True) -> tuple[
     parameter_frame, model_curves = phase_fit_short_rate_models(start_date=start_date, write_outputs=write_outputs)
     _, nss_curves = phase_fit_nss_curve(start_date=start_date, write_outputs=write_outputs)
     monthly_rates, _ = phase_build_bootstrap_curves(start_date=start_date, write_outputs=write_outputs)
+    fed_monthly, fed_curves, fed_reconstruction_check = phase_build_fed_benchmark_curves(start_date=start_date, write_outputs=write_outputs)
     fit_metrics, fit_metrics_per_date = _aggregate_fit_metrics(nss_curves, model_curves)
     stability = _parameter_stability_metrics(parameter_frame)
     observed_details, observed_metrics = _compute_observed_curve_fit(monthly_rates, nss_curves, model_curves)
-    _plot_curve_examples(nss_curves, model_curves)
+    fed_details, fed_metrics = _compute_fed_curve_fit(fed_monthly, fed_curves, nss_curves, model_curves)
+    _plot_curve_examples(fed_curves, nss_curves, model_curves)
     _plot_fit_comparison(fit_metrics)
     if write_outputs:
         write_csv(METRICS_DIR / "model_fit_metrics.csv", fit_metrics)
         write_csv(METRICS_DIR / "parameter_stability_metrics.csv", stability)
         write_csv(METRICS_DIR / "observed_curve_fit_metrics.csv", observed_metrics)
         write_csv(OBSERVED_CURVE_DETAILS_PATH, observed_details)
+        write_csv(METRICS_DIR / "fed_curve_fit_metrics.csv", fed_metrics)
+        write_csv(FED_CURVE_DETAILS_PATH, fed_details)
+        write_json(
+            SUMMARIES_DIR / "phase1_benchmark_summary.json",
+            {
+                "observed_curve_best_model": observed_metrics.iloc[0]["model"],
+                "observed_curve_best_rmse_bps": float(observed_metrics.iloc[0]["observed_yield_rmse"] * 10000.0),
+                "fed_curve_best_model": fed_metrics.iloc[0]["model"],
+                "fed_curve_best_rmse_bps": float(fed_metrics.iloc[0]["fed_yield_rmse"] * 10000.0),
+                "fed_reconstruction_rmse_bps": float(np.sqrt(np.mean(np.square(fed_reconstruction_check["reconstruction_error"]))) * 100.0),
+            },
+        )
     return fit_metrics_per_date, stability
 
 
@@ -471,13 +720,16 @@ def phase_build_pricing_outputs(start_date: str, write_outputs: bool = True) -> 
 
 def phase_results(start_date: str, write_outputs: bool = True) -> dict:
     phase_fetch_public_rates(start_date=start_date, write_outputs=write_outputs)
+    phase_fetch_fed_benchmark(start_date=start_date, write_outputs=write_outputs)
     phase_build_bootstrap_curves(start_date=start_date, write_outputs=write_outputs)
     phase_fit_nss_curve(start_date=start_date, write_outputs=write_outputs)
+    phase_build_fed_benchmark_curves(start_date=start_date, write_outputs=write_outputs)
     phase_fit_short_rate_models(start_date=start_date, write_outputs=write_outputs)
     phase_evaluate_models(start_date=start_date, write_outputs=write_outputs)
     phase_build_pricing_outputs(start_date=start_date, write_outputs=write_outputs)
     outputs = {
         "raw_rates_path": str(RAW_RATES_PATH),
+        "fed_nominal_path": str(FED_NOMINAL_DAILY_PATH),
         "bootstrap_curves_path": str(BOOTSTRAP_CURVES_PATH),
         "nss_parameters_path": str(NSS_PARAMETERS_PATH),
         "model_parameters_path": str(MODEL_PARAMETERS_PATH),
@@ -494,8 +746,12 @@ def run_phase(phase: str) -> None:
     start_date = SMOKE_START_DATE if phase == "smoke" else DEFAULT_START_DATE
     if phase == "fetch_public_rates":
         phase_fetch_public_rates(start_date)
+    elif phase == "fetch_fed_benchmark":
+        phase_fetch_fed_benchmark(start_date)
     elif phase == "build_bootstrap_curves":
         phase_build_bootstrap_curves(start_date)
+    elif phase == "build_fed_benchmark_curves":
+        phase_build_fed_benchmark_curves(start_date)
     elif phase == "fit_nss_curve":
         phase_fit_nss_curve(start_date)
     elif phase == "fit_short_rate_models":

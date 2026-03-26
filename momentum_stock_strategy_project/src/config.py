@@ -29,6 +29,7 @@ WRDS_STOCK_CACHE_PARQUET = RAW_DIR / "wrds_stock_price_cache.parquet"
 RECENT_MARKET_CACHE_CSV = RAW_DIR / "recent_market_extension_cache.csv"
 RECENT_MARKET_CACHE_PARQUET = RAW_DIR / "recent_market_extension_cache.parquet"
 UNIVERSE_MEMBERSHIP_PATH = PROCESSED_DIR / "universe_membership.parquet"
+PROCESSED_UNIVERSE_SOURCE_PATH = PROCESSED_DIR / "universe_source_snapshot.parquet"
 FEATURE_PANEL_PATH = PROCESSED_DIR / "feature_panel.parquet"
 SCORE_PANEL_PATH = PROCESSED_DIR / "score_panel.parquet"
 PORTFOLIO_HISTORY_PATH = PROCESSED_DIR / "portfolio_history.parquet"
@@ -37,6 +38,8 @@ EXPERIMENTAL_PORTFOLIO_HISTORY_PATH = PROCESSED_DIR / "portfolio_history_experim
 EXPERIMENTAL_TRADE_LOG_PATH = PROCESSED_DIR / "trade_log_experimental.parquet"
 LATEST_PORTFOLIO_PATH = REPORTS_DIR / "latest_target_portfolio.csv"
 LATEST_EXPERIMENTAL_PORTFOLIO_PATH = REPORTS_DIR / "latest_experimental_target_portfolio.csv"
+CURRENT_HOLDINGS_PATH = REPORTS_DIR / "current_holdings.csv"
+CURRENT_EXPERIMENTAL_HOLDINGS_PATH = REPORTS_DIR / "current_experimental_holdings.csv"
 LATEST_CORE_RANK_PATH = REPORTS_DIR / "latest_core_rank.csv"
 LATEST_EXPERIMENTAL_RANK_PATH = REPORTS_DIR / "latest_experimental_rank.csv"
 LATEST_EARLY_RANK_PATH = REPORTS_DIR / "latest_early_rank.csv"
@@ -48,6 +51,7 @@ SCREENER_SUMMARY_PATH = METRICS_DIR / "screener_summary.json"
 EXPERIMENTAL_SCREENER_SUMMARY_PATH = METRICS_DIR / "experimental_screener_summary.json"
 SIGNAL_COMPARISON_PATH = METRICS_DIR / "signal_variant_comparison.json"
 PIPELINE_SUMMARY_PATH = METRICS_DIR / "pipeline_summary.json"
+RUN_MANIFEST_PATH = METRICS_DIR / "run_manifest.json"
 EQUITY_CURVE_FIGURE = FIGURES_DIR / "equity_curve.png"
 RANK_SCATTER_FIGURE = FIGURES_DIR / "latest_rank_scatter.png"
 
@@ -65,7 +69,7 @@ MIN_PRICE = 10.0
 MIN_MEDIAN_DOLLAR_VOLUME = 20_000_000.0
 MIN_HISTORY_DAYS = 260
 
-BENCHMARK_TICKERS = ["SPY", "QQQ"]
+BENCHMARK_TICKERS = ["SPY", "QQQ", "MTUM"]
 WATCHLIST = [
     "AAPL",
     "MSFT",
@@ -93,6 +97,51 @@ SECTOR_ETF_MAP = {
     "Utilities": "XLU",
 }
 
+TICKER_SECTOR_OVERRIDES = {
+    "AAPL": "Information Technology",
+    "ABNB": "Consumer Discretionary",
+    "AFRM": "Financials",
+    "ALAB": "Information Technology",
+    "AMAT": "Information Technology",
+    "AMZN": "Consumer Discretionary",
+    "APP": "Information Technology",
+    "ASTS": "Communication Services",
+    "AVGO": "Information Technology",
+    "CEG": "Utilities",
+    "COIN": "Financials",
+    "CRWD": "Information Technology",
+    "DDOG": "Information Technology",
+    "DKNG": "Consumer Discretionary",
+    "FANG": "Energy",
+    "FTNT": "Information Technology",
+    "GOOG": "Communication Services",
+    "GOOGL": "Communication Services",
+    "GLW": "Information Technology",
+    "HOOD": "Financials",
+    "KHC": "Consumer Staples",
+    "KLAC": "Information Technology",
+    "LRCX": "Information Technology",
+    "META": "Communication Services",
+    "MDB": "Information Technology",
+    "MRNA": "Health Care",
+    "MSFT": "Information Technology",
+    "MU": "Information Technology",
+    "NFLX": "Communication Services",
+    "NVDA": "Information Technology",
+    "PYPL": "Financials",
+    "RIVN": "Consumer Discretionary",
+    "SMCI": "Information Technology",
+    "SQ": "Financials",
+    "TER": "Information Technology",
+    "TEAM": "Information Technology",
+    "TTD": "Communication Services",
+    "TSLA": "Consumer Discretionary",
+    "VRSK": "Industrials",
+    "WBD": "Communication Services",
+    "WDC": "Information Technology",
+    "ZS": "Information Technology",
+}
+
 CORE_SIGNAL_WEIGHTS = {
     "mom_6_1": 0.30,
     "mom_12_1": 0.20,
@@ -116,9 +165,9 @@ EARLY_SIGNAL_WEIGHTS = {
 WINSOR_LOWER = 0.025
 WINSOR_UPPER = 0.975
 SMOOTHING_SPAN = 3
-ENTRY_PERCENTILE = 0.90
-EXIT_PERCENTILE = 0.65
-TARGET_POSITIONS = 15
+ENTRY_PERCENTILE = 0.85
+EXIT_PERCENTILE = 0.55
+TARGET_POSITIONS = 18
 MIN_ACTIVE_NAMES = 8
 
 MAX_NAME_WEIGHT = 0.10

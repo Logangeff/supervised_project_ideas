@@ -18,6 +18,7 @@ from .config import (
     RECENT_MARKET_CACHE_PARQUET,
     RECENT_SYMBOL_ALIASES,
     SECTOR_ETF_MAP,
+    TICKER_SECTOR_OVERRIDES,
     UNIVERSE_TARGET_COUNT,
     USER_WATCHLIST_PATH,
     WATCHLIST,
@@ -203,6 +204,7 @@ def _fetch_active_common_names(connection, as_of_date: pd.Timestamp) -> pd.DataF
     names = names[names["ticker"] != ""].drop_duplicates("ticker", keep="first").reset_index(drop=True)
     names["company_name"] = names["comnam"].astype(str).str.strip()
     names["sector"] = names["siccd"].map(_sic_to_sector)
+    names["sector"] = names["ticker"].map(TICKER_SECTOR_OVERRIDES).fillna(names["sector"])
     names["index_source"] = "wrds_crsp"
     return names[["permno", "permco", "ticker", "company_name", "sector", "siccd", "index_source"]]
 
@@ -230,6 +232,7 @@ def _fetch_watchlist_names(connection, as_of_date: pd.Timestamp, tickers: list[s
     names["ticker"] = names["ticker"].map(sanitize_ticker)
     names["company_name"] = names["comnam"].astype(str).str.strip()
     names["sector"] = names["siccd"].map(_sic_to_sector)
+    names["sector"] = names["ticker"].map(TICKER_SECTOR_OVERRIDES).fillna(names["sector"])
     names["index_source"] = "wrds_watchlist"
     names = names.drop_duplicates("ticker", keep="first").reset_index(drop=True)
     return names[["permno", "permco", "ticker", "company_name", "sector", "siccd", "index_source"]]
@@ -248,7 +251,7 @@ def _fetch_recent_liquidity(connection, as_of_date: pd.Timestamp) -> pd.DataFram
         select
             d.date,
             d.permno,
-            abs(d.prc) / nullif(d.cfacpr, 0) as adj_close,
+            abs(d.prc) as close,
             d.vol
         from crsp.dsf d
         inner join active_names a
@@ -257,9 +260,9 @@ def _fetch_recent_liquidity(connection, as_of_date: pd.Timestamp) -> pd.DataFram
     """
     recent = connection.raw_sql(sql)
     recent["date"] = pd.to_datetime(recent["date"])
-    recent["adj_close"] = pd.to_numeric(recent["adj_close"], errors="coerce")
+    recent["close"] = pd.to_numeric(recent["close"], errors="coerce")
     recent["vol"] = pd.to_numeric(recent["vol"], errors="coerce").fillna(0.0)
-    recent["dollar_volume"] = recent["adj_close"] * recent["vol"]
+    recent["dollar_volume"] = recent["close"] * recent["vol"]
     return recent
 
 
@@ -270,7 +273,7 @@ def _build_top_liquid_universe(connection, as_of_date: pd.Timestamp, limit: int 
         recent.groupby("permno", sort=False)
         .agg(
             latest_date=("date", "max"),
-            latest_adj_close=("adj_close", "last"),
+            latest_close=("close", "last"),
             median_dollar_volume_60=("dollar_volume", "median"),
             history_days=("date", "nunique"),
         )
@@ -278,13 +281,53 @@ def _build_top_liquid_universe(connection, as_of_date: pd.Timestamp, limit: int 
     )
     universe = names.merge(stats, on="permno", how="inner")
     universe = universe[
-        (universe["latest_adj_close"] >= MIN_PRICE)
+        (universe["latest_close"] >= MIN_PRICE)
         & (universe["median_dollar_volume_60"] >= MIN_MEDIAN_DOLLAR_VOLUME)
         & (universe["history_days"] >= 40)
     ].copy()
     universe = universe.sort_values("median_dollar_volume_60", ascending=False)
     target_count = limit if limit is not None else UNIVERSE_TARGET_COUNT
     return universe.head(target_count).reset_index(drop=True)
+
+
+def _build_top_liquid_universe_union(
+    connection,
+    start: str,
+    as_of_date: pd.Timestamp,
+    limit: int | None,
+) -> pd.DataFrame:
+    snapshot_dates = pd.date_range(start=pd.to_datetime(start), end=as_of_date, freq="QE").to_pydatetime().tolist()
+    if not snapshot_dates or pd.Timestamp(snapshot_dates[-1]) != as_of_date:
+        snapshot_dates.append(as_of_date)
+
+    frames: list[pd.DataFrame] = []
+    for snapshot_date in snapshot_dates:
+        snapshot = _build_top_liquid_universe(connection, pd.to_datetime(snapshot_date), limit=limit).copy()
+        if snapshot.empty:
+            continue
+        snapshot["snapshot_date"] = pd.to_datetime(snapshot_date)
+        frames.append(snapshot)
+
+    if not frames:
+        return pd.DataFrame()
+
+    combined = pd.concat(frames, ignore_index=True).sort_values(["ticker", "snapshot_date", "median_dollar_volume_60"])
+    summary = (
+        combined.groupby("ticker", sort=False)
+        .agg(
+            permco=("permco", "last"),
+            permno=("permno", "last"),
+            company_name=("company_name", "last"),
+            sector=("sector", "last"),
+            siccd=("siccd", "last"),
+            index_source=("index_source", "last"),
+            first_snapshot_date=("snapshot_date", "min"),
+            last_snapshot_date=("snapshot_date", "max"),
+            snapshot_count=("snapshot_date", "nunique"),
+        )
+        .reset_index()
+    )
+    return summary
 
 
 def _build_watchlist_universe(connection, as_of_date: pd.Timestamp) -> pd.DataFrame:
@@ -294,6 +337,7 @@ def _build_watchlist_universe(connection, as_of_date: pd.Timestamp) -> pd.DataFr
 
 def _resolve_wrds_universe(
     connection,
+    start: str,
     end: str,
     limit: int | None = None,
     universe_mode: str = "watchlist",
@@ -303,7 +347,7 @@ def _resolve_wrds_universe(
     as_of_date = min(requested_end, max_date)
     if universe_mode == "watchlist":
         return _build_watchlist_universe(connection, as_of_date), as_of_date
-    return _build_top_liquid_universe(connection, as_of_date, limit=limit), as_of_date
+    return _build_top_liquid_universe_union(connection, start=start, as_of_date=as_of_date, limit=limit), as_of_date
 
 
 def _fetch_wrds_history_chunk(connection, permnos: list[int], start_date: pd.Timestamp, end_date: pd.Timestamp) -> pd.DataFrame:
@@ -375,6 +419,7 @@ def _update_wrds_price_cache(
 
     cache = cache.drop_duplicates(subset=["permno", "date"], keep="last").sort_values(["permno", "date"]).reset_index(drop=True)
     cache["ticker"] = cache["permno"].map(universe_source.set_index("permno")["ticker"].to_dict()).fillna(cache.get("ticker"))
+    cache = cache.drop_duplicates(subset=["ticker", "date"], keep="last").sort_values(["ticker", "date"]).reset_index(drop=True)
     _persist_wrds_cache(universe_source, cache)
     return cache, appended_rows
 
@@ -535,7 +580,13 @@ def refresh_data_from_wrds(
 ) -> WrdsRefreshArtifacts:
     connection = connect_wrds()
     try:
-        universe_source, actual_end = _resolve_wrds_universe(connection, end=end, limit=limit, universe_mode=universe_mode)
+        universe_source, actual_end = _resolve_wrds_universe(
+            connection,
+            start=start,
+            end=end,
+            limit=limit,
+            universe_mode=universe_mode,
+        )
         if universe_source.empty:
             raise ValueError("The WRDS universe query returned no stocks for the current configuration.")
         wrds_cache, wrds_appended_rows = _update_wrds_price_cache(connection, universe_source, start=start, end=actual_end)
@@ -551,8 +602,10 @@ def refresh_data_from_wrds(
     wrds_stock_prices["ticker"] = wrds_stock_prices["permno"].map(universe_source.set_index("permno")["ticker"].to_dict())
 
     requested_end = pd.to_datetime(end)
+    latest_snapshot_mask = pd.to_datetime(universe_source.get("last_snapshot_date")) == actual_end if "last_snapshot_date" in universe_source.columns else pd.Series(True, index=universe_source.index)
+    recent_extension_tickers = universe_source.loc[latest_snapshot_mask, "ticker"].astype(str).tolist()
     recent_cache, recent_appended_rows, recent_failed_tickers = _update_recent_stock_cache(
-        selected_tickers=universe_source["ticker"].astype(str).tolist(),
+        selected_tickers=recent_extension_tickers,
         wrds_cache=wrds_stock_prices,
         wrds_end=actual_end,
         requested_end=requested_end,

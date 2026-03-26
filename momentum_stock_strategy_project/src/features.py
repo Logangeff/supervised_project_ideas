@@ -76,9 +76,13 @@ def _compute_ticker_features(frame: pd.DataFrame) -> pd.DataFrame:
         .fillna(False)
         .astype(int)
     )
-    ordered["avg_dollar_volume_20"] = (ordered["adj_close"] * ordered["volume"]).rolling(20).mean()
-    ordered["avg_dollar_volume_60"] = (ordered["adj_close"] * ordered["volume"]).rolling(60).mean()
-    ordered["volume_confirmation"] = np.log(ordered["avg_dollar_volume_20"] / ordered["avg_dollar_volume_60"]).clip(-1.5, 1.5)
+    ordered["avg_dollar_volume_20"] = (ordered["close"] * ordered["volume"]).rolling(20).mean()
+    ordered["avg_dollar_volume_60"] = (ordered["close"] * ordered["volume"]).rolling(60).mean()
+    volume_ratio = ordered["avg_dollar_volume_20"] / ordered["avg_dollar_volume_60"].replace(0.0, np.nan)
+    volume_confirmation = pd.Series(np.nan, index=ordered.index, dtype=float)
+    positive_ratio = volume_ratio > 0
+    volume_confirmation.loc[positive_ratio] = np.log(volume_ratio.loc[positive_ratio])
+    ordered["volume_confirmation"] = volume_confirmation.clip(-1.5, 1.5)
 
     prev_close = ordered["adj_close"].shift(1)
     true_range = pd.concat(
@@ -100,8 +104,8 @@ def _compute_ticker_features(frame: pd.DataFrame) -> pd.DataFrame:
     return ordered
 
 
-def compute_feature_panel(prices: pd.DataFrame, universe: pd.DataFrame, benchmark_tickers: list[str]) -> pd.DataFrame:
-    relevant_tickers = set(universe["ticker"]).union(benchmark_tickers).union(universe["sector_etf"])
+def compute_feature_panel(prices: pd.DataFrame, universe_membership: pd.DataFrame, benchmark_tickers: list[str]) -> pd.DataFrame:
+    relevant_tickers = set(universe_membership["ticker"]).union(benchmark_tickers).union(universe_membership["sector_etf"])
     panel = prices[prices["ticker"].isin(relevant_tickers)].copy()
     feature_panel = (
         panel.groupby("ticker", group_keys=False, sort=True)
@@ -109,7 +113,7 @@ def compute_feature_panel(prices: pd.DataFrame, universe: pd.DataFrame, benchmar
         .reset_index(drop=True)
     )
 
-    sector_returns = feature_panel[feature_panel["ticker"].isin(set(universe["sector_etf"]))][["date", "ticker", "mom_63"]].copy()
+    sector_returns = feature_panel[feature_panel["ticker"].isin(set(universe_membership["sector_etf"]))][["date", "ticker", "mom_63"]].copy()
     sector_returns = sector_returns.rename(columns={"ticker": "sector_etf", "mom_63": "sector_etf_mom_63"})
 
     spy_returns = feature_panel[feature_panel["ticker"] == "SPY"][["date", "mom_63", "adj_close", "sma_200", "realized_vol_20"]].copy()
@@ -122,8 +126,25 @@ def compute_feature_panel(prices: pd.DataFrame, universe: pd.DataFrame, benchmar
         }
     )
 
-    stock_features = feature_panel[feature_panel["ticker"].isin(set(universe["ticker"]))].copy()
-    stock_features = stock_features.merge(universe[["ticker", "sector", "sector_etf", "universe_rank"]], on="ticker", how="left")
+    stock_features = feature_panel[feature_panel["ticker"].isin(set(universe_membership["ticker"]))].copy()
+    stock_features = stock_features.merge(
+        universe_membership[
+            [
+                "date",
+                "ticker",
+                "company_name",
+                "sector",
+                "sector_etf",
+                "latest_adj_close",
+                "median_dollar_volume_60",
+                "history_days",
+                "eligible",
+                "universe_rank",
+            ]
+        ],
+        on=["date", "ticker"],
+        how="inner",
+    )
     stock_features = stock_features.merge(sector_returns, on=["date", "sector_etf"], how="left")
     stock_features = stock_features.merge(spy_returns, on="date", how="left")
     stock_features["sector_rel_strength"] = stock_features["mom_63"] - stock_features["sector_etf_mom_63"]

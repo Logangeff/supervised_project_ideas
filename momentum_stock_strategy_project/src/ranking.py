@@ -40,7 +40,10 @@ def _score_single_date(frame: pd.DataFrame) -> pd.DataFrame:
         fill_value = winsorized.dropna().median() if winsorized.notna().any() else 0.0
         scored[f"{column}_z"] = _zscore(winsorized.fillna(fill_value))
 
-    liquidity_score = _zscore(np.log(scored["avg_dollar_volume_60"].replace(0.0, np.nan)).fillna(0.0))
+    log_dollar_volume = pd.Series(np.nan, index=scored.index, dtype=float)
+    positive_liquidity = scored["avg_dollar_volume_60"] > 0
+    log_dollar_volume.loc[positive_liquidity] = np.log(scored.loc[positive_liquidity, "avg_dollar_volume_60"])
+    liquidity_score = _zscore(log_dollar_volume.fillna(0.0))
     raw_core = 0.0
     for column, weight in CORE_SIGNAL_WEIGHTS.items():
         raw_core += weight * scored[f"{column}_z"]

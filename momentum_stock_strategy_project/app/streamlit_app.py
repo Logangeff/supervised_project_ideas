@@ -12,6 +12,8 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 REPORTS_DIR = ROOT_DIR / "outputs" / "reports"
 METRICS_DIR = ROOT_DIR / "outputs" / "metrics"
 PROCESSED_DIR = ROOT_DIR / "data" / "processed"
+RAW_DIR = ROOT_DIR / "data" / "raw"
+WATCHLIST_CONFIG_PATH = ROOT_DIR / "config" / "watchlist.csv"
 
 
 def _load_csv(path: Path) -> pd.DataFrame:
@@ -33,6 +35,39 @@ def _load_history(path: Path) -> pd.DataFrame:
     if "date" in frame.columns:
         frame["date"] = pd.to_datetime(frame["date"])
     return frame
+
+
+def _load_price_panel() -> pd.DataFrame:
+    path = RAW_DIR / "price_panel.parquet"
+    if not path.exists():
+        return pd.DataFrame()
+    frame = pd.read_parquet(path)
+    if "date" in frame.columns:
+        frame["date"] = pd.to_datetime(frame["date"])
+    return frame
+
+
+def _sanitize_ticker(ticker: object) -> str:
+    return str(ticker).strip().upper().replace(".", "-")
+
+
+def _load_watchlist_config() -> pd.DataFrame:
+    if not WATCHLIST_CONFIG_PATH.exists():
+        return pd.DataFrame({"ticker": []})
+    frame = pd.read_csv(WATCHLIST_CONFIG_PATH)
+    if "ticker" not in frame.columns:
+        return pd.DataFrame({"ticker": []})
+    clean = [_sanitize_ticker(value) for value in frame["ticker"].dropna().tolist()]
+    clean = [value for value in clean if value]
+    return pd.DataFrame({"ticker": sorted(dict.fromkeys(clean))})
+
+
+def _save_watchlist_config(frame: pd.DataFrame) -> int:
+    tickers = [_sanitize_ticker(value) for value in frame.get("ticker", pd.Series(dtype=object)).tolist()]
+    tickers = [value for value in tickers if value]
+    output = pd.DataFrame({"ticker": sorted(dict.fromkeys(tickers))})
+    output.to_csv(WATCHLIST_CONFIG_PATH, index=False)
+    return int(len(output))
 
 
 def _metric_delta(value: float, baseline: float) -> str | None:
@@ -80,11 +115,12 @@ def _styled_rank_table(frame: pd.DataFrame, rank_col: str, score_col: str, pct_c
     )
     if "position_action" in display.columns:
         action_colors = {
-            "Hard Buy": "background-color: #0f9d58; color: white; font-weight: 600;",
+            "Strong Buy": "background-color: #0f9d58; color: white; font-weight: 600;",
             "Buy": "background-color: #7bd88f; color: black; font-weight: 600;",
+            "Watch": "background-color: #f4f4f4; color: black;",
             "Neutral": "background-color: #f4f4f4; color: black;",
-            "Sell": "background-color: #ffb3b3; color: black; font-weight: 600;",
-            "Hard Sell": "background-color: #d93025; color: white; font-weight: 600;",
+            "Reduce": "background-color: #ffd180; color: black; font-weight: 600;",
+            "Sell": "background-color: #d93025; color: white; font-weight: 600;",
         }
         styled = styled.map(lambda v: action_colors.get(v, ""), subset=["short_term_action", "position_action"])
     return styled
@@ -100,7 +136,27 @@ def _styled_portfolio_table(frame: pd.DataFrame, score_col: str, rank_col: str) 
     )
 
 
-def _portfolio_history_chart(history: pd.DataFrame, history_experimental: pd.DataFrame) -> go.Figure:
+def _benchmark_curve(price_panel: pd.DataFrame, ticker: str, dates: pd.Series) -> pd.DataFrame:
+    if price_panel.empty:
+        return pd.DataFrame()
+    bench = price_panel[price_panel["ticker"] == ticker][["date", "adj_close"]].dropna().sort_values("date").copy()
+    if bench.empty:
+        return pd.DataFrame()
+    aligned = pd.DataFrame({"date": pd.to_datetime(dates).sort_values().unique()})
+    aligned = aligned.merge(bench, on="date", how="left").sort_values("date")
+    aligned["adj_close"] = aligned["adj_close"].ffill()
+    aligned = aligned.dropna(subset=["adj_close"]).copy()
+    if aligned.empty:
+        return pd.DataFrame()
+    base = float(aligned["adj_close"].iloc[0])
+    if base == 0:
+        return pd.DataFrame()
+    aligned["equity_curve"] = aligned["adj_close"] / base
+    aligned["ticker"] = ticker
+    return aligned
+
+
+def _portfolio_history_chart(history: pd.DataFrame, history_experimental: pd.DataFrame, price_panel: pd.DataFrame) -> go.Figure:
     figure = go.Figure()
     if not history.empty:
         figure.add_trace(go.Scatter(x=history["date"], y=history["equity_curve"], name="Baseline equity", line={"color": "black"}))
@@ -122,9 +178,29 @@ def _portfolio_history_chart(history: pd.DataFrame, history_experimental: pd.Dat
                 line={"color": "#1976D2"},
             )
         )
+        spy_curve = _benchmark_curve(price_panel, "SPY", history["date"])
+        if not spy_curve.empty:
+            figure.add_trace(
+                go.Scatter(
+                    x=spy_curve["date"],
+                    y=spy_curve["equity_curve"],
+                    name="SPY benchmark",
+                    line={"color": "#14833b", "dash": "dash"},
+                )
+            )
+        mtum_curve = _benchmark_curve(price_panel, "MTUM", history["date"])
+        if not mtum_curve.empty:
+            figure.add_trace(
+                go.Scatter(
+                    x=mtum_curve["date"],
+                    y=mtum_curve["equity_curve"],
+                    name="MTUM benchmark",
+                    line={"color": "#7b1fa2", "dash": "dash"},
+                )
+            )
     figure.update_layout(
         title="Portfolio history",
-        yaxis_title="Equity",
+        yaxis_title="Growth of $1",
         yaxis2={"overlaying": "y", "side": "right", "title": "Drawdown"},
         legend={"orientation": "h"},
         margin={"l": 20, "r": 20, "t": 50, "b": 20},
@@ -167,6 +243,7 @@ experimental_portfolio = _load_csv(REPORTS_DIR / "latest_experimental_target_por
 history = _load_history(PROCESSED_DIR / "portfolio_history.parquet")
 history_experimental = _load_history(PROCESSED_DIR / "portfolio_history_experimental.parquet")
 score_panel = _load_history(PROCESSED_DIR / "score_panel.parquet")
+price_panel = _load_price_panel()
 backtest = _load_json(METRICS_DIR / "backtest_summary.json")
 experimental_backtest = _load_json(METRICS_DIR / "experimental_backtest_summary.json")
 screener = _load_json(METRICS_DIR / "screener_summary.json")
@@ -175,7 +252,7 @@ signal_comparison = _load_json(METRICS_DIR / "signal_variant_comparison.json")
 
 st.title("Momentum Stock Strategy and Screener")
 st.caption("Daily EOD screener, weekly rebalance portfolio, long-only plus cash.")
-page = st.sidebar.radio("Dashboard page", ["Page 1: Research", "Page 2: Guided Screener"])
+page = st.sidebar.radio("Dashboard page", ["Page 1: Research", "Page 2: Guided Screener", "Page 3: Watchlist Config"])
 latest_signal_date = None
 if not core.empty and "date" in core.columns:
     latest_signal_date = pd.to_datetime(core["date"]).max().date()
@@ -201,7 +278,7 @@ if page == "Page 1: Research":
     )
 
     if not history.empty:
-        st.plotly_chart(_portfolio_history_chart(history, history_experimental), use_container_width=True)
+        st.plotly_chart(_portfolio_history_chart(history, history_experimental, price_panel), use_container_width=True)
 
     if screener:
         st.markdown("### Screener validation")
@@ -306,7 +383,7 @@ if page == "Page 1: Research":
         )
         st.plotly_chart(scatter, use_container_width=True)
 
-else:
+elif page == "Page 2: Guided Screener":
     st.subheader("Guided Screener")
     if latest_signal_date is not None:
         st.caption(f"Latest signal date: {latest_signal_date}. This page is meant to be your quick morning check.")
@@ -331,10 +408,11 @@ Use it when you want quick answers to 3 questions:
     st.markdown("### 1. Portfolio growth")
     st.caption(
         "Black is the original strategy. Blue is the research version with MACD, ADX, and RSI added. "
-        "Use this chart to see whether the new signals improved the overall path, not just one metric."
+        "Green dashed is SPY. Purple dashed is MTUM, a well-known momentum ETF. "
+        "Use this chart to see whether the strategy beats a passive benchmark you could buy directly."
     )
     if not history.empty:
-        st.plotly_chart(_portfolio_history_chart(history, history_experimental), use_container_width=True)
+        st.plotly_chart(_portfolio_history_chart(history, history_experimental, price_panel), use_container_width=True)
 
     st.markdown("### 2. Best stocks right now")
     st.caption(
@@ -366,11 +444,11 @@ Use it when you want quick answers to 3 questions:
             """
 Action labels:
 
-- `Hard Buy`: trend is intact and the stock is ranking strongly
+- `Strong Buy`: top-tier setup with strong rank and trend support
 - `Buy`: constructive setup, but not the very strongest
 - `Neutral`: mixed signals, usually watch rather than act
-- `Sell`: momentum quality is weakening
-- `Hard Sell`: strong deterioration or trend break
+- `Reduce`: not favored right now; avoid adding and consider trimming
+- `Sell`: clear deterioration across multiple dimensions
 """
         )
 
@@ -469,4 +547,50 @@ Signals used here:
     st.info(
         "Read this page as a screener and research dashboard, not as blind auto-trading advice. "
         "The cleaner question is whether the ranking quality is improving, not whether every top stock should be bought immediately."
+    )
+
+else:
+    st.subheader("Watchlist Config")
+    st.caption("Edit your personal watchlist here. This page writes directly to `config/watchlist.csv`.")
+
+    if "watchlist_editor_df" not in st.session_state:
+        st.session_state["watchlist_editor_df"] = _load_watchlist_config()
+
+    st.markdown(
+        """
+Use this page to manage the tickers followed in `watchlist` mode.
+
+- add or remove rows
+- type tickers like `AAPL`, `TSLA`, `NVDA`
+- tickers are normalized to uppercase automatically
+- after saving, rerun `run_watchlist.bat` to refresh rankings and portfolio outputs
+"""
+    )
+
+    edited = st.data_editor(
+        st.session_state["watchlist_editor_df"],
+        num_rows="dynamic",
+        use_container_width=True,
+        hide_index=True,
+        key="watchlist_editor",
+    )
+
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("Save Watchlist", type="primary", use_container_width=True):
+            count = _save_watchlist_config(pd.DataFrame(edited))
+            st.session_state["watchlist_editor_df"] = _load_watchlist_config()
+            st.success(f"Saved {count} watchlist tickers to config/watchlist.csv")
+    with c2:
+        if st.button("Reload From File", use_container_width=True):
+            st.session_state["watchlist_editor_df"] = _load_watchlist_config()
+            st.rerun()
+
+    current_file = _load_watchlist_config()
+    st.markdown("### Current saved watchlist")
+    st.dataframe(current_file, use_container_width=True, hide_index=True)
+
+    st.info(
+        "Saving this page updates the config file only. "
+        "To update the screener outputs, rerun `run_watchlist.bat` or `python -m src.main --phase all --universe-mode watchlist`."
     )

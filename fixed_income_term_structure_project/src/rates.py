@@ -5,7 +5,7 @@ from io import StringIO
 import pandas as pd
 import requests
 
-from .config import DEFAULT_START_DATE, FRED_BASE_CSV_URL, TREASURY_SERIES
+from .config import DEFAULT_START_DATE, FED_NOMINAL_CSV_URL, FRED_BASE_CSV_URL, TREASURY_SERIES
 
 
 def fetch_fred_series(series_id: str) -> pd.DataFrame:
@@ -27,6 +27,24 @@ def fetch_public_rates(start_date: str = DEFAULT_START_DATE) -> pd.DataFrame:
     merged = merged.sort_values("date").reset_index(drop=True)
     merged = merged[merged["date"] >= pd.Timestamp(start_date)].copy()
     return merged
+
+
+def fetch_fed_nominal_curve(start_date: str = DEFAULT_START_DATE) -> pd.DataFrame:
+    response = requests.get(FED_NOMINAL_CSV_URL, headers={"User-Agent": "Mozilla/5.0"}, timeout=60)
+    response.raise_for_status()
+    text = response.text
+    lines = text.splitlines()
+    header_index = next(index for index, line in enumerate(lines) if line.startswith("Date,"))
+    frame = pd.read_csv(StringIO("\n".join(lines[header_index:])))
+    frame = frame.replace({"NA": pd.NA, "ND": pd.NA})
+    frame["Date"] = pd.to_datetime(frame["Date"], errors="coerce")
+    frame = frame.rename(columns={"Date": "date"})
+    for column in frame.columns:
+        if column != "date":
+            frame[column] = pd.to_numeric(frame[column], errors="coerce")
+    frame = frame[frame["date"] >= pd.Timestamp(start_date)].copy()
+    frame = frame.sort_values("date").reset_index(drop=True)
+    return frame
 
 
 def build_monthly_snapshots(daily_rates: pd.DataFrame) -> pd.DataFrame:

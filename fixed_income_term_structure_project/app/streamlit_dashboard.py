@@ -16,6 +16,7 @@ PROCESSED_DIR = ROOT / "data" / "processed"
 FIGURES_DIR = ROOT / "outputs" / "figures"
 
 COLOR_MAP = {
+    "Fed published benchmark": "#7c3aed",
     "NSS benchmark": "#111827",
     "Hull-White 1F": "#0f766e",
     "CIR": "#dc2626",
@@ -50,17 +51,20 @@ def format_price(value: float, digits: int = 3) -> str:
     return f"{value:.{digits}f}"
 
 
-def build_overview_table(fit_metrics: pd.DataFrame, pricing_metrics: pd.DataFrame, swap_metrics: pd.DataFrame) -> pd.DataFrame:
+def build_overview_table(fit_metrics: pd.DataFrame, pricing_metrics: pd.DataFrame, swap_metrics: pd.DataFrame, fed_metrics: pd.DataFrame) -> pd.DataFrame:
     fit = fit_metrics.copy()
     pricing = pricing_metrics.groupby("model", as_index=False).agg(pricing_rmse=("pricing_rmse", "mean"))
     swaps = swap_metrics.groupby("model", as_index=False).agg(swap_rate_rmse=("swap_rate_rmse", "mean"))
-    merged = fit.merge(pricing, on="model", how="left").merge(swaps, on="model", how="left")
+    fed = fed_metrics[~fed_metrics["model"].eq("Fed published benchmark")].copy()
+    merged = fit.merge(pricing, on="model", how="left").merge(swaps, on="model", how="left").merge(fed[["model", "fed_yield_rmse", "fed_yield_mae"]], on="model", how="left")
     merged["zero_yield_rmse_bps"] = merged["zero_yield_rmse"] * 10000.0
     merged["pricing_rmse"] = merged["pricing_rmse"].fillna(0.0)
     merged["swap_rate_rmse_bps"] = merged["swap_rate_rmse"].fillna(0.0) * 10000.0
+    merged["fed_yield_rmse_bps"] = merged["fed_yield_rmse"] * 10000.0
     return merged[
         [
             "model",
+            "fed_yield_rmse_bps",
             "zero_yield_rmse_bps",
             "zero_yield_mae",
             "pricing_rmse",
@@ -68,19 +72,19 @@ def build_overview_table(fit_metrics: pd.DataFrame, pricing_metrics: pd.DataFram
             "forward_roughness",
             "discount_monotonic_share",
         ]
-    ].sort_values("zero_yield_rmse_bps")
+    ].sort_values("fed_yield_rmse_bps")
 
 
-def render_metric_cards(fetch_summary: dict, bootstrap_summary: dict, observed_metrics: pd.DataFrame) -> None:
-    fair_contest = observed_metrics[observed_metrics["model"].isin(["CIR", "Vasicek"])].sort_values("observed_yield_rmse_bps").reset_index(drop=True)
+def render_metric_cards(fetch_summary: dict, bootstrap_summary: dict, observed_metrics: pd.DataFrame, fed_metrics: pd.DataFrame) -> None:
+    fair_contest = fed_metrics[fed_metrics["model"].isin(["CIR", "Vasicek"])].sort_values("fed_yield_rmse_bps").reset_index(drop=True)
     best_equilibrium = fair_contest.iloc[0]
     cols = st.columns(4)
     cols[0].metric("Sample Range", f"{fetch_summary['start_date']} to {fetch_summary['end_date']}")
     cols[1].metric("Monthly Snapshots", str(bootstrap_summary["monthly_snapshot_count"]))
     cols[2].metric("Best Equilibrium Model", best_equilibrium["model"])
-    cols[3].metric("Observed-Curve RMSE", format_bps(best_equilibrium["observed_yield_rmse_bps"] / 10000.0))
+    cols[3].metric("Fed-Curve RMSE", format_bps(best_equilibrium["fed_yield_rmse_bps"] / 10000.0))
     st.caption(
-        "Observed Treasury yields are the primary benchmark. NSS is the internal smoothing layer. Hull-White 1F is the exact-fit arbitrage-free anchor, and the fair structural contest is CIR versus Vasicek."
+        "Observed Treasury yields are the market-quote benchmark. The Fed nominal curve is the external central-bank benchmark. NSS is the internal smoothing layer. Hull-White 1F is the exact-fit arbitrage-free anchor, and the fair structural contest is CIR versus Vasicek."
     )
 
 
@@ -89,21 +93,24 @@ def render_overview_tab(
     bootstrap_summary: dict,
     overview: pd.DataFrame,
     observed_metrics: pd.DataFrame,
+    fed_metrics: pd.DataFrame,
     monthly_rates: pd.DataFrame,
+    fed_monthly: pd.DataFrame,
+    fed_curves: pd.DataFrame,
     nss_curves: pd.DataFrame,
     model_curves: pd.DataFrame,
 ) -> None:
     st.subheader("Project Story")
     st.write(
-        "This project starts from observed public U.S. Treasury yields. Those observed market quotes are the primary benchmark. We then bootstrap par, zero, discount, and forward curves, smooth the term structure with Nelson-Siegel-Svensson, and compare one-factor models. Hull-White 1F is included as the exact-fit anchor, while the meaningful structural contest is CIR versus Vasicek."
+        "This project starts from observed public U.S. Treasury yields. Those observed market quotes are the market benchmark. We then compare our own bootstrapped and NSS-smoothed curves against the official Federal Reserve nominal yield curve, and only then compare one-factor models. Hull-White 1F is included as the exact-fit anchor, while the meaningful structural contest is CIR versus Vasicek."
     )
-    render_metric_cards(fetch_summary, bootstrap_summary, observed_metrics)
+    render_metric_cards(fetch_summary, bootstrap_summary, observed_metrics, fed_metrics)
     st.subheader("Decision Snapshot")
-    fair_contest = observed_metrics[observed_metrics["model"].isin(["CIR", "Vasicek"])].sort_values("observed_yield_rmse_bps").reset_index(drop=True)
+    fair_contest = fed_metrics[fed_metrics["model"].isin(["CIR", "Vasicek"])].sort_values("fed_yield_rmse_bps").reset_index(drop=True)
     winner = fair_contest.iloc[0]
     runner_up = fair_contest.iloc[1]
     st.info(
-        f"Against the observed Treasury curve, {winner['model']} currently edges {runner_up['model']} within the fair equilibrium-model contest. Hull-White remains the anchored lower bound, and NSS remains the internal smoothing reference rather than the primary benchmark."
+        f"Against the official Fed curve, {winner['model']} currently edges {runner_up['model']} within the fair equilibrium-model contest. Hull-White remains the anchored lower bound, and NSS remains the internal smoothing reference rather than the external benchmark."
     )
     available_dates = sorted(pd.to_datetime(monthly_rates["date"]).dt.date.unique())
     selected_date = st.selectbox("Observed-vs-model snapshot", options=available_dates, index=len(available_dates) - 1, key="overview_date")
@@ -120,6 +127,9 @@ def render_overview_tab(
             {"maturity_years": 30.0, "label": "30Y", "observed_yield_pct": float(selected_row["DGS30"])},
         ]
     )
+    fed_curve = fed_curves[pd.to_datetime(fed_curves["date"]).dt.date == selected_date].copy()
+    fed_curve["display_rate"] = fed_curve["zero_yield"] * 100.0
+    fed_curve["model"] = "Fed published benchmark"
     benchmark = nss_curves[pd.to_datetime(nss_curves["date"]).dt.date == selected_date].copy()
     benchmark["display_rate"] = benchmark["zero_yield"] * 100.0
     benchmark["model"] = "NSS benchmark"
@@ -127,6 +137,7 @@ def render_overview_tab(
     models["display_rate"] = models["zero_yield"] * 100.0
     plot_frame = pd.concat(
         [
+            fed_curve[["maturity_years", "display_rate", "model"]],
             benchmark[["maturity_years", "display_rate", "model"]],
             models[["maturity_years", "display_rate", "model"]],
         ],
@@ -151,7 +162,7 @@ def render_overview_tab(
     )
     fig.update_layout(xaxis_title="Maturity (years)", yaxis_title="Yield / zero rate (%)")
     st.plotly_chart(fig, use_container_width=True)
-    st.caption("Orange markers are the actual observed Treasury yields. The lines are the internal smoothed benchmark and the model-implied curves.")
+    st.caption("Orange markers are the actual observed Treasury yields. The purple line is the official Fed benchmark. The black line is our internal NSS smoothing layer. The other lines are the model-implied curves.")
     display = overview.copy()
     display["Zero-Yield RMSE"] = display["zero_yield_rmse_bps"].map(lambda value: f"{value:.2f} bps")
     display["Bond Pricing RMSE"] = display["pricing_rmse"].map(format_price)
@@ -163,9 +174,15 @@ def render_overview_tab(
     observed_display = observed_display[["model", "Observed Curve RMSE", "Observed Curve MAE", "points"]]
     st.dataframe(observed_display.rename(columns={"model": "Model", "points": "Observed points"}), use_container_width=True, hide_index=True)
     st.caption("This table is the direct market benchmark: each model is compared to the observed Treasury curve at the quoted maturities.")
+    fed_display = fed_metrics.copy()
+    fed_display["Fed Curve RMSE"] = fed_display["fed_yield_rmse_bps"].map(lambda value: f"{value:.2f} bps")
+    fed_display["Fed Curve MAE"] = fed_display["fed_yield_mae_bps"].map(lambda value: f"{value:.2f} bps")
+    fed_display = fed_display[["model", "Fed Curve RMSE", "Fed Curve MAE", "points"]]
+    st.dataframe(fed_display.rename(columns={"model": "Model", "points": "Fed points"}), use_container_width=True, hide_index=True)
+    st.caption("This is the external central-bank benchmark: each curve is compared to the Fed published nominal yield curve.")
     st.dataframe(
         display[
-            ["model", "Zero-Yield RMSE", "Bond Pricing RMSE", "Swap RMSE", "Monotonic Discount Share"]
+            ["model", "Fed Curve RMSE", "Zero-Yield RMSE", "Bond Pricing RMSE", "Swap RMSE", "Monotonic Discount Share"]
         ].rename(columns={"model": "Model"}),
         use_container_width=True,
         hide_index=True,
@@ -178,10 +195,11 @@ def render_benchmark_tab(
     pricing_metrics: pd.DataFrame,
     swap_metrics: pd.DataFrame,
     observed_metrics: pd.DataFrame,
+    fed_metrics: pd.DataFrame,
 ) -> None:
     st.subheader("Benchmark Logic")
     st.write(
-        "Read the benchmark story in two layers. First, compare everything to the observed Treasury curve. Second, compare the model zero curves to the internal NSS smoothing layer."
+        "Read the benchmark story in three layers. First, compare curves to observed Treasury quotes. Second, compare them to the Fed published nominal curve. Third, compare the model zero curves to the internal NSS smoothing layer."
     )
 
     observed_plot = observed_metrics.copy()
@@ -198,6 +216,21 @@ def render_benchmark_tab(
     fig_observed.update_layout(showlegend=False, xaxis_title="", yaxis_title="RMSE (basis points)")
     st.plotly_chart(fig_observed, use_container_width=True)
     st.caption("This is the primary benchmark: how closely each curve representation lines up with the actual observed Treasury yields.")
+
+    fed_plot = fed_metrics.copy()
+    fed_plot["Fed RMSE (bps)"] = fed_plot["fed_yield_rmse"] * 10000.0
+    fig_fed = px.bar(
+        fed_plot,
+        x="model",
+        y="Fed RMSE (bps)",
+        color="model",
+        color_discrete_map=COLOR_MAP,
+        title="Fed Published Nominal Curve Fit Error",
+        text_auto=".2f",
+    )
+    fig_fed.update_layout(showlegend=False, xaxis_title="", yaxis_title="RMSE (basis points)")
+    st.plotly_chart(fig_fed, use_container_width=True)
+    st.caption("This is the external benchmark from the teaching notes: each curve is compared to the Fed published nominal curve.")
 
     fit_plot = fit_metrics.copy()
     fit_plot["RMSE (bps)"] = fit_plot["zero_yield_rmse"] * 10000.0
@@ -245,8 +278,17 @@ def render_benchmark_tab(
     st.plotly_chart(fig_swap, use_container_width=True)
     st.caption("This is the pricing-usefulness view: how much each model deviates from the benchmark par swap rate.")
 
-    table = build_overview_table(fit_metrics, pricing_metrics, swap_metrics)
+    table = build_overview_table(
+        fit_metrics,
+        pricing_metrics,
+        swap_metrics,
+        fed_metrics.assign(
+            fed_yield_rmse_bps=lambda df: df["fed_yield_rmse"] * 10000.0,
+            fed_yield_mae_bps=lambda df: df["fed_yield_mae"] * 10000.0,
+        ),
+    )
     display = table.copy()
+    display["fed_yield_rmse_bps"] = display["fed_yield_rmse_bps"].map(lambda value: f"{value:.2f}")
     display["zero_yield_rmse_bps"] = display["zero_yield_rmse_bps"].map(lambda value: f"{value:.2f}")
     display["zero_yield_mae"] = display["zero_yield_mae"].map(lambda value: f"{value * 10000:.2f}")
     display["pricing_rmse"] = display["pricing_rmse"].map(lambda value: f"{value:.3f}")
@@ -257,6 +299,7 @@ def render_benchmark_tab(
         display.rename(
             columns={
                 "model": "Model",
+                "fed_yield_rmse_bps": "Fed RMSE (bps)",
                 "zero_yield_rmse_bps": "Zero RMSE (bps)",
                 "zero_yield_mae": "Zero MAE (bps)",
                 "pricing_rmse": "Avg Bond Pricing RMSE",
@@ -270,7 +313,7 @@ def render_benchmark_tab(
     )
 
 
-def render_curve_explorer(nss_curves: pd.DataFrame, model_curves: pd.DataFrame, monthly_rates: pd.DataFrame) -> None:
+def render_curve_explorer(nss_curves: pd.DataFrame, fed_curves: pd.DataFrame, model_curves: pd.DataFrame, monthly_rates: pd.DataFrame) -> None:
     st.subheader("Curve Explorer")
     available_dates = sorted(pd.to_datetime(nss_curves["date"]).dt.date.unique())
     default_date = available_dates[-1]
@@ -284,11 +327,14 @@ def render_curve_explorer(nss_curves: pd.DataFrame, model_curves: pd.DataFrame, 
             "forward_rate": "Forward rate",
         }[value],
     )
+    fed_curve = fed_curves[pd.to_datetime(fed_curves["date"]).dt.date == selected_date].copy()
+    fed_curve["model"] = "Fed published benchmark"
     benchmark = nss_curves[pd.to_datetime(nss_curves["date"]).dt.date == selected_date].copy()
     benchmark["model"] = "NSS benchmark"
     models = model_curves[pd.to_datetime(model_curves["date"]).dt.date == selected_date].copy()
     plot_frame = pd.concat(
         [
+            fed_curve[["maturity_years", metric, "model"]],
             benchmark[["maturity_years", metric, "model"]],
             models[["maturity_years", metric, "model"]],
         ],
@@ -380,13 +426,13 @@ def render_pricing_tab(pricing_details: pd.DataFrame, swap_details: pd.DataFrame
     st.dataframe(latest, use_container_width=True, hide_index=True)
 
 
-def render_data_quality_tab(fetch_summary: dict, bootstrap_summary: dict, fit_summary: dict, monthly_rates: pd.DataFrame) -> None:
+def render_data_quality_tab(fetch_summary: dict, bootstrap_summary: dict, fit_summary: dict, fed_summary: dict, fed_fetch_summary: dict, monthly_rates: pd.DataFrame) -> None:
     st.subheader("Data Quality and Validation")
     cols = st.columns(4)
     cols[0].metric("Treasury Series", str(fetch_summary["series_count"]))
     cols[1].metric("Raw Daily Rows", str(fetch_summary["rows"]))
     cols[2].metric("Monthly Snapshots", str(bootstrap_summary["monthly_snapshot_count"]))
-    cols[3].metric("Toy Bootstrap Check", "Passed" if abs(bootstrap_summary["toy_bootstrap_check"]["bootstrap_equation_residual_2y"]) < 1e-10 else "Review")
+    cols[3].metric("Fed Reconstruction RMSE", f"{fed_summary['reconstruction_rmse_bps']:.3f} bps")
 
     validation = pd.DataFrame(
         [
@@ -394,6 +440,7 @@ def render_data_quality_tab(fetch_summary: dict, bootstrap_summary: dict, fit_su
             {"Check": "Bootstrap discount factors are monotone", "Result": "Pass" if bootstrap_summary["all_discount_monotonic"] else "Fail"},
             {"Check": "Hull-White exact-fit benchmark reproduced", "Result": "Pass" if fit_summary["hull_white_max_abs_error"] == 0.0 else "Review"},
             {"Check": "Dynamic Hull-White parameters estimated from data", "Result": "Pass" if not fit_summary["hull_white_dynamic_estimate"]["used_default"] else "Defaulted"},
+            {"Check": "Fed coefficient reconstruction", "Result": "Pass" if fed_summary["reconstruction_rmse_bps"] < 0.1 else "Review"},
         ]
     )
     st.dataframe(validation, use_container_width=True, hide_index=True)
@@ -415,6 +462,25 @@ def render_data_quality_tab(fetch_summary: dict, bootstrap_summary: dict, fit_su
     fig_missing.update_layout(xaxis_title="", yaxis_title="Missing share (%)", showlegend=False)
     st.plotly_chart(fig_missing, use_container_width=True)
     st.caption("The monthly snapshot builder drops all-NaN holiday month-end rows and keeps the last valid in-month observation.")
+
+    fed_rows = pd.DataFrame(
+        [
+            {"Metric": "Fed benchmark start", "Value": fed_fetch_summary["start_date"]},
+            {"Metric": "Fed benchmark end", "Value": fed_fetch_summary["end_date"]},
+            {"Metric": "Fed monthly snapshots", "Value": str(fed_summary["monthly_snapshot_count"])},
+            {"Metric": "Fed reconstruction overlap points", "Value": str(fed_summary["overlap_points"])},
+            {
+                "Metric": "TP1 coefficient validation",
+                "Value": (
+                    f"{fed_summary['tp1_validation']['yield_rmse_bps']:.3f} bps RMSE"
+                    if fed_summary.get("tp1_validation", {}).get("available") and "yield_rmse_bps" in fed_summary.get("tp1_validation", {})
+                    else "Not available"
+                ),
+            },
+        ]
+    )
+    st.dataframe(fed_rows, use_container_width=True, hide_index=True)
+    st.caption("The Fed benchmark is the external curve from the course notes. The TP1 coefficient file is used only as a small local consistency check when overlap exists.")
 
     recent_rates = monthly_rates.tail(24).copy()
     long_rates = recent_rates.melt(id_vars="date", value_vars=["DGS1", "DGS2", "DGS5", "DGS10", "DGS30"], var_name="series_id", value_name="yield_pct")
@@ -443,32 +509,37 @@ def main() -> None:
     st.caption("Public U.S. Treasury term-structure construction, NSS smoothing, and one-factor benchmark comparison.")
 
     fetch_summary = load_json("fetch_public_rates_summary.json")
+    fed_fetch_summary = load_json("fetch_fed_benchmark_summary.json")
     bootstrap_summary = load_json("build_bootstrap_curves_summary.json")
     fit_summary = load_json("fit_short_rate_models_summary.json")
+    fed_summary = load_json("build_fed_benchmark_summary.json")
 
     fit_metrics = load_metric_csv("model_fit_metrics.csv")
     pricing_metrics = load_metric_csv("model_pricing_metrics.csv")
     swap_metrics = load_metric_csv("swap_rate_comparison.csv")
     observed_metrics = load_metric_csv("observed_curve_fit_metrics.csv")
+    fed_metrics = load_metric_csv("fed_curve_fit_metrics.csv")
     monthly_rates = load_csv("monthly_rates.csv", parse_dates=["date"])
+    fed_monthly = load_csv("fed_nominal_curve_monthly.csv", parse_dates=["date"])
+    fed_curves = load_csv("fed_benchmark_curves.csv", parse_dates=["date"])
     nss_curves = load_csv("nss_curves.csv", parse_dates=["date"])
     model_curves = load_csv("model_curves.csv", parse_dates=["date"])
     pricing_details = load_csv("pricing_details.csv", parse_dates=["date"])
     swap_details = load_csv("swap_rate_details.csv", parse_dates=["date"])
 
-    overview = build_overview_table(fit_metrics, pricing_metrics, swap_metrics)
+    overview = build_overview_table(fit_metrics, pricing_metrics, swap_metrics, fed_metrics.assign(fed_yield_rmse_bps=lambda df: df["fed_yield_rmse"] * 10000.0, fed_yield_mae_bps=lambda df: df["fed_yield_mae"] * 10000.0))
 
     tabs = st.tabs(["Overview", "Benchmark Comparison", "Curve Explorer", "Pricing", "Data Quality", "Appendix"])
     with tabs[0]:
-        render_overview_tab(fetch_summary, bootstrap_summary, overview, observed_metrics.assign(observed_yield_rmse_bps=lambda df: df["observed_yield_rmse"] * 10000.0, observed_yield_mae_bps=lambda df: df["observed_yield_mae"] * 10000.0), monthly_rates, nss_curves, model_curves)
+        render_overview_tab(fetch_summary, bootstrap_summary, overview, observed_metrics.assign(observed_yield_rmse_bps=lambda df: df["observed_yield_rmse"] * 10000.0, observed_yield_mae_bps=lambda df: df["observed_yield_mae"] * 10000.0), fed_metrics.assign(fed_yield_rmse_bps=lambda df: df["fed_yield_rmse"] * 10000.0, fed_yield_mae_bps=lambda df: df["fed_yield_mae"] * 10000.0), monthly_rates, fed_monthly, fed_curves, nss_curves, model_curves)
     with tabs[1]:
-        render_benchmark_tab(fit_metrics, pricing_metrics, swap_metrics, observed_metrics)
+        render_benchmark_tab(fit_metrics, pricing_metrics, swap_metrics, observed_metrics, fed_metrics)
     with tabs[2]:
-        render_curve_explorer(nss_curves, model_curves, monthly_rates)
+        render_curve_explorer(nss_curves, fed_curves, model_curves, monthly_rates)
     with tabs[3]:
         render_pricing_tab(pricing_details, swap_details)
     with tabs[4]:
-        render_data_quality_tab(fetch_summary, bootstrap_summary, fit_summary, monthly_rates)
+        render_data_quality_tab(fetch_summary, bootstrap_summary, fit_summary, fed_summary, fed_fetch_summary, monthly_rates)
     with tabs[5]:
         render_appendix_tab()
 

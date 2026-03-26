@@ -6,13 +6,15 @@ The project is intentionally staged:
 
 1. construct Treasury-based par, zero, discount, and forward curves
 2. smooth the curve with Nelson-Siegel-Svensson
-3. compare one-factor models: Vasicek, CIR, and Hull-White 1F
-4. evaluate fit, stability, and pricing usefulness with simple bond and par-swap outputs
+3. compare our smoothing layer with the official Federal Reserve nominal yield curve
+4. compare one-factor models: Vasicek, CIR, and Hull-White 1F
+5. evaluate fit, stability, and pricing usefulness with simple bond and par-swap outputs
 
 ## v1 scope
 
 Included:
 - public U.S. Treasury data from FRED
+- official Federal Reserve nominal yield curve benchmark
 - monthly end-of-period snapshots
 - bootstrapped zero / discount / forward curves
 - Nelson-Siegel-Svensson benchmark curve
@@ -57,6 +59,8 @@ python -m src.main --phase all
 
 The project includes a professor-facing Streamlit dashboard that makes the benchmark logic explicit:
 
+- observed Treasury yields are the market-quote benchmark
+- the Fed nominal curve is the external central-bank benchmark
 - Hull-White 1F is shown as the exact-fit anchored benchmark
 - CIR and Vasicek are compared as the fair equilibrium-model contest
 - pricing and swap outputs are shown by maturity
@@ -65,6 +69,12 @@ Launch it with:
 
 ```bat
 launch_dashboard.bat
+```
+
+Alternative one-page presentation UI:
+
+```bat
+launch_onepage_dashboard.bat
 ```
 
 Useful phases:
@@ -93,6 +103,8 @@ Useful phases:
 
 The key comparison in v1 is:
 
+- observed Treasury yields versus the Fed published curve
+- Fed published curve versus our own NSS smoothing
 - `Vasicek` and `CIR` as parsimonious equilibrium-model comparators
 - `Hull-White 1F` as an arbitrage-free current-curve anchored benchmark
 
